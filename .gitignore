@@ -1,0 +1,13 @@
+# Credenciais — NUNCA versionar
+.env
+
+# Arquivos gerados pelo robô (contêm dados de clientes)
+downloads/
+saidas/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
