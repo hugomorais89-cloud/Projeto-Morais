@@ -17,7 +17,7 @@ AZUL_EXTRA = PatternFill("solid", fgColor="5B7FA6")  # colunas extras trazidas p
 ROSA = PatternFill("solid", fgColor="FFC7CE", bgColor="FFC7CE")
 FORMAS_PAGAMENTO = ["CARTÃO", "DÉBITO", "PIX", "BOLETO"]
 # Larguras iguais às do modelo
-LARGURAS = {"SEGURADORA": 15, "SEGURADO": 56, "APÓLICE/CPF": 19, "PAGAMENTO": 14,
+LARGURAS = {"SEGURADORA": 15, "SEGURADO": 56, "APÓLICE": 19, "CPF/CNPJ": 17, "PAGAMENTO": 14,
             "PARCELA": 12, "VENCIMENTO": 16, "PRODUTOR": 21, "NOVA DATA": 17,
             "CONTATO": 13, "DATA LIMITE": 15, "RAMO": 10, "DIAS EM ATRASO": 11}
 CINZA = PatternFill("solid", fgColor="F2F2F2")

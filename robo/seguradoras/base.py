@@ -16,13 +16,14 @@ from pathlib import Path
 import pandas as pd
 
 # Formato padrão da planilha consolidada (uma linha = uma parcela em aberto).
-# As 10 primeiras colunas seguem exatamente o modelo da equipe
+# As primeiras colunas seguem o modelo da equipe
 # (CONTROLE_INADIMPLENCIA.xlsx). PAGAMENTO, PRODUTOR, NOVA DATA, CONTATO e
 # DATA LIMITE são de controle interno e saem em branco para preenchimento.
 COLUNAS_MODELO = [
     "SEGURADORA",
     "SEGURADO",
-    "APÓLICE/CPF",
+    "APÓLICE",      # no modelo era uma coluna só (APÓLICE/CPF); aqui ficam separadas
+    "CPF/CNPJ",
     "PAGAMENTO",
     "PARCELA",
     "VENCIMENTO",
@@ -33,8 +34,6 @@ COLUNAS_MODELO = [
 ]
 # Colunas extras que o robô consegue trazer dos portais
 COLUNAS_EXTRAS = [
-    "CPF/CNPJ",
-    "APÓLICE",
     "RECIBO",
     "RAMO",
     "DIAS EM ATRASO",
@@ -144,10 +143,6 @@ def montar_padrao(nome_seguradora: str, linhas: list[dict]) -> pd.DataFrame:
         if col not in df.columns:
             df[col] = ""
     df["SEGURADORA"] = nome_seguradora
-    # Como no modelo: apólice quando houver, senão o CPF/CNPJ do segurado
-    df["APÓLICE/CPF"] = [
-        texto(a) or texto(c) for a, c in zip(df["APÓLICE"], df["CPF/CNPJ"])
-    ]
     df["DIAS EM ATRASO"] = [
         (hoje - v).days if isinstance(v, date) else None for v in df["VENCIMENTO"]
     ]
