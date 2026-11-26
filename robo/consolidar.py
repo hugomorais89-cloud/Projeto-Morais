@@ -19,14 +19,15 @@ FORMAS_PAGAMENTO = ["CARTÃO", "DÉBITO", "PIX", "BOLETO"]
 # Larguras iguais às do modelo
 LARGURAS = {"SEGURADORA": 15, "SEGURADO": 56, "APÓLICE": 19, "CPF/CNPJ": 17, "PAGAMENTO": 14,
             "PARCELA": 12, "VENCIMENTO": 16, "PRODUTOR": 21, "NOVA DATA": 17,
-            "CONTATO": 13, "DATA LIMITE": 15, "RAMO": 10, "DIAS EM ATRASO": 11}
+            "CONTATO": 13, "DATA LIMITE": 15, "TELEFONE": 17, "SITUAÇÃO": 16, "RAMO": 10, "DIAS EM ATRASO": 11}
 CINZA = PatternFill("solid", fgColor="F2F2F2")
 BRANCO_NEGRITO = Font(bold=True, color="FFFFFF")
 
 
-def gerar_planilha(dados: list[pd.DataFrame], status: list[dict], destino: Path) -> Path:
+def gerar_planilha(dados: dict[str, pd.DataFrame], status: list[dict], destino: Path) -> Path:
+    """`dados` = {nome do módulo/portal: DataFrame no formato padrão}."""
     if dados:
-        base = pd.concat(dados, ignore_index=True)
+        base = pd.concat(list(dados.values()), ignore_index=True)
         base = base.sort_values(["VENCIMENTO", "SEGURADORA", "SEGURADO"], na_position="last")
     else:
         base = pd.DataFrame(columns=COLUNAS)
@@ -34,7 +35,7 @@ def gerar_planilha(dados: list[pd.DataFrame], status: list[dict], destino: Path)
     # Resumo por seguradora
     linhas = []
     for s in status:
-        parte = base[base["SEGURADORA"] == s["seguradora"]]
+        parte = dados.get(s["seguradora"], base.iloc[0:0])
         linhas.append({
             "SEGURADORA": s["seguradora"],
             "SITUAÇÃO DA EXTRAÇÃO": s["situacao"],

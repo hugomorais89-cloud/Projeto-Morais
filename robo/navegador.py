@@ -54,3 +54,27 @@ def clicar_texto(page, texto: str, exato: bool = False, papel: str | None = None
         el = achar(page, lambda f: f.get_by_text(texto, exact=exato), tempo)
     el.click()
     page.wait_for_timeout(800)
+
+
+def login_generico(page, usuario: str, senha: str, botao: str = r"entrar|acessar|login") -> None:
+    """Preenche usuário e senha no primeiro formulário de login visível (página ou iframe)."""
+    import re
+
+    campo_senha = achar(page, lambda f: f.locator("input[type=password]"), tempo=60)
+    # O usuário é o campo de texto visível que vem antes da senha no mesmo formulário
+    usuario_loc = campo_senha.locator(
+        "xpath=preceding::input[not(@type='hidden') and not(@type='checkbox')"
+        " and not(@type='radio') and not(@type='password')][1]"
+    )
+    usuario_loc.fill(usuario)
+    campo_senha.fill(senha)
+    alvo = achar(
+        page,
+        lambda f: f.get_by_role("button", name=re.compile(botao, re.I)),
+        tempo=10,
+        obrigatorio=False,
+    )
+    if alvo is not None:
+        alvo.click()
+    else:
+        campo_senha.press("Enter")

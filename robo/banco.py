@@ -49,7 +49,10 @@ CREATE TABLE IF NOT EXISTS parcelas (
     vencimento         TEXT,            -- AAAA-MM-DD
     valor              REAL,
     prev_cancelamento  TEXT,            -- AAAA-MM-DD
-    comissao           REAL
+    comissao           REAL,
+    telefone           TEXT,
+    pagamento          TEXT,
+    situacao           TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_parcelas_extracao ON parcelas(extracao_id);
 """
@@ -61,6 +64,11 @@ def conectar():
     con.row_factory = sqlite3.Row
     try:
         con.executescript(ESQUEMA)
+        # bancos criados antes destas colunas existirem
+        existentes = {r[1] for r in con.execute("PRAGMA table_info(parcelas)")}
+        for col in ("telefone", "pagamento", "situacao"):
+            if col not in existentes:
+                con.execute(f"ALTER TABLE parcelas ADD COLUMN {col} TEXT")
         yield con
         con.commit()
     finally:
@@ -107,12 +115,13 @@ def salvar_execucao(inicio: datetime, status: list[dict], dados: dict[str, pd.Da
             extracao_id = cur.lastrowid
             con.executemany(
                 "INSERT INTO parcelas (extracao_id, seguradora, segurado, cpf_cnpj, apolice,"
-                " recibo, ramo, parcela, vencimento, valor, prev_cancelamento, comissao)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                " recibo, ramo, parcela, vencimento, valor, prev_cancelamento, comissao,"
+                " telefone, pagamento, situacao) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [
                     (extracao_id, l["SEGURADORA"], l["SEGURADO"], l["CPF/CNPJ"], l["APÓLICE"],
                      l["RECIBO"], l["RAMO"], l["PARCELA"], _iso(l["VENCIMENTO"]),
-                     _num(l["VALOR"]), _iso(l["PREV. CANCELAMENTO"]), _num(l["COMISSÃO"]))
+                     _num(l["VALOR"]), _iso(l["PREV. CANCELAMENTO"]), _num(l["COMISSÃO"]),
+                     l["TELEFONE"] or None, l["PAGAMENTO"] or None, l["SITUAÇÃO"] or None)
                     for l in df.to_dict("records")
                 ],
             )

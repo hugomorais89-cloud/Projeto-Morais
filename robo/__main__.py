@@ -53,7 +53,7 @@ def main(argv=None) -> int:
         return 2
 
     inicio = datetime.now()
-    dados, status = [], []
+    dados, status = {}, []
     precisa_navegador = any(s not in arquivos_manuais for s in escolhidas)
     pw = navegador = None
     if precisa_navegador:
@@ -87,7 +87,7 @@ def main(argv=None) -> int:
                         contexto.close()
                 log.info("Relatório: %s", arquivo)
                 df = seg.normalizar(arquivo)
-                dados.append(df)
+                dados[seg.nome] = df
                 status.append({"seguradora": seg.nome, "situacao": "OK",
                                "detalhe": Path(arquivo).name})
                 log.info("%d parcelas em aberto", len(df))
@@ -102,8 +102,7 @@ def main(argv=None) -> int:
 
     destino = config.PASTA_SAIDAS / f"CONTROLE_INADIMPLENCIA_{datetime.now():%Y-%m-%d}.xlsx"
     gerar_planilha(dados, status, destino)
-    banco.salvar_execucao(inicio, status, {df["SEGURADORA"].iloc[0]: df for df in dados if len(df)},
-                          origem="manual" if arquivos_manuais else "robo")
+    banco.salvar_execucao(inicio, status, dados, origem="manual" if arquivos_manuais else "robo")
     log.info("Histórico gravado em %s", banco.ARQUIVO_BANCO)
     log.info("Planilha consolidada: %s", destino)
     log.info("Log desta execução: %s", arq_log)

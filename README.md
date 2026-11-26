@@ -6,9 +6,20 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
 **Etapa 1 (atual):** extração + planilha consolidada.
 **Etapa 2 (futura):** cobrança automática via WhatsApp (Digisac).
 
-| Seguradora | Situação |
-|---|---|
-| Allianz (AllianzNet) | ✅ testada no portal real em 26/11/2026 (135 parcelas, ~20 s) |
+| Seguradora | Como o robô busca | Situação |
+|---|---|---|
+| Allianz (AllianzNet) | Gestão de Inadimplentes → Gerar Planilha (CSV) | ✅ testada no portal real |
+| Tokio Marine (Portal Parceiros) | corretora **32904** → Clientes inadimplentes → todos os ramos → EXCEL | ✅ testada no portal real |
+| EZZE | Minha gestão → Parcelas em atraso → Download | ⚠ falta testar no escritório |
+| HDI (HDI Digital) | Parcela → período de vencimento → Buscar → lê a tabela da tela (não há Excel) | ⚠ falta testar no escritório |
+| Yelum / Aliro | Gestão de Parcelas → "Atrasadas" + "A Vencer" com vencimento original já passado → Exportar Excel | ⚠ falta testar no escritório |
+
+EZZE, HDI e Yelum bloqueiam acessos de fora do Brasil / automatizados vindos de servidores,
+por isso o primeiro teste delas precisa ser no computador do escritório
+(com `NAVEGADOR_OCULTO=false` para acompanhar na tela).
+
+Como o portal da Yelum traz as duas marcas, a coluna SEGURADORA sai como **YELUM** ou **ALIRO**
+conforme o produto. Formas de pagamento são padronizadas para CARTÃO / DÉBITO / PIX / BOLETO.
 
 ## A planilha gerada
 
@@ -18,7 +29,7 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
     `SEGURADORA, SEGURADO, APÓLICE, CPF/CNPJ, PAGAMENTO, PARCELA, VENCIMENTO, PRODUTOR, NOVA DATA, CONTATO, DATA LIMITE`.
     PAGAMENTO (com lista CARTÃO/DÉBITO/PIX/BOLETO), PRODUTOR, NOVA DATA, CONTATO e DATA LIMITE saem em branco para a equipe preencher.
   - Depois vêm as colunas extras trazidas pelo robô (cabeçalho num azul mais claro):
-    `RECIBO, RAMO, DIAS EM ATRASO, VALOR, PREV. CANCELAMENTO, COMISSÃO`.
+    `TELEFONE, SITUAÇÃO, RECIBO, RAMO, DIAS EM ATRASO, VALOR, PREV. CANCELAMENTO, COMISSÃO`.
   - Segurado repetido fica destacado em rosa, como no modelo.
 
 ## Painel web

@@ -34,6 +34,8 @@ COLUNAS_MODELO = [
 ]
 # Colunas extras que o robô consegue trazer dos portais
 COLUNAS_EXTRAS = [
+    "TELEFONE",
+    "SITUAÇÃO",     # situação informada pela seguradora (ex.: Atrasado, Recusada)
     "RECIBO",
     "RAMO",
     "DIAS EM ATRASO",
@@ -63,11 +65,26 @@ def chave(texto: str) -> str:
     return re.sub(r"[^A-Z0-9]+", "_", t.upper()).strip("_")
 
 
-def ler_tabela(arquivo: Path) -> pd.DataFrame:
-    """Lê CSV (qualquer separador/codificação) ou Excel, tudo como texto."""
+def ler_tabela(arquivo: Path, cabecalho_com: tuple[str, ...] = ()) -> pd.DataFrame:
+    """Lê CSV (qualquer separador/codificação) ou Excel, tudo como texto.
+
+    `cabecalho_com`: nomes de coluna que identificam a linha de cabeçalho, para
+    relatórios que trazem linhas de resumo antes da tabela (ex.: Tokio Marine).
+    """
     arquivo = Path(arquivo)
     if arquivo.suffix.lower() in (".xlsx", ".xls", ".xlsm"):
-        df = pd.read_excel(arquivo, dtype=str)
+        if cabecalho_com:
+            bruto = pd.read_excel(arquivo, dtype=str, header=None)
+            alvo = {chave(c) for c in cabecalho_com}
+            for i in range(min(len(bruto), 40)):
+                if alvo & {chave(v) for v in bruto.iloc[i].dropna()}:
+                    df = bruto.iloc[i + 1:].copy()
+                    df.columns = [texto(v) or f"UNNAMED_{j}" for j, v in enumerate(bruto.iloc[i])]
+                    break
+            else:
+                raise ValueError(f"Cabeçalho com {cabecalho_com} não encontrado em {arquivo.name}")
+        else:
+            df = pd.read_excel(arquivo, dtype=str)
     else:
         bruto = arquivo.read_bytes()
         try:
@@ -129,10 +146,13 @@ def para_data(valor):
 
 
 def texto(valor) -> str:
-    if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+    if valor is None or (isinstance(valor, float) and pd.isna(valor)) or valor is pd.NA:
         return ""
     s = str(valor).strip()
-    return "" if s.lower() == "nan" else s
+    if s.lower() in ("nan", "<na>", "none"):
+        return ""
+    # Excel às vezes grava números de apólice como 318320260538502.0
+    return re.sub(r"^(\d+)\.0$", r"\1", s)
 
 
 def montar_padrao(nome_seguradora: str, linhas: list[dict]) -> pd.DataFrame:
@@ -142,8 +162,26 @@ def montar_padrao(nome_seguradora: str, linhas: list[dict]) -> pd.DataFrame:
     for col in COLUNAS:
         if col not in df.columns:
             df[col] = ""
-    df["SEGURADORA"] = nome_seguradora
+    # Um portal pode trazer mais de uma seguradora (ex.: Yelum e Aliro):
+    # nesse caso o módulo informa SEGURADORA linha a linha.
+    df["SEGURADORA"] = [texto(v) or nome_seguradora for v in df["SEGURADORA"]]
     df["DIAS EM ATRASO"] = [
         (hoje - v).days if isinstance(v, date) else None for v in df["VENCIMENTO"]
     ]
     return df[COLUNAS]
+
+
+def forma_pagamento(valor) -> str:
+    """Padroniza a forma de pagamento para a lista do modelo (CARTÃO/DÉBITO/PIX/BOLETO)."""
+    t = chave(texto(valor))
+    if not t:
+        return ""
+    if "CART" in t or "CREDITO" in t:
+        return "CARTÃO"
+    if "DEBITO" in t or "CONTA" in t:
+        return "DÉBITO"
+    if "PIX" in t:
+        return "PIX"
+    if "BOLETO" in t or "FICHA" in t or "CARNE" in t:
+        return "BOLETO"
+    return texto(valor).upper()

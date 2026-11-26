@@ -65,6 +65,7 @@ th.num,td.num{text-align:right}
 th .seta{opacity:.5;font-size:10px}
 tbody tr:hover{background:#f8fbff}
 td.seg-nome{white-space:normal;min-width:220px;font-weight:500}
+td.quebra{white-space:normal;min-width:160px;font-size:12px;color:var(--sub)}
 .risco{font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;display:inline-block}
 .risco.vencido{background:var(--vencido-bg);color:var(--vencido)}
 .risco.critico{background:var(--critico-bg);color:var(--critico)}
@@ -103,7 +104,7 @@ td.seg-nome{white-space:normal;min-width:220px;font-weight:500}
 
   <h2>Parcelas em aberto</h2>
   <div class="filtros">
-    <label>Buscar segurado, CPF/CNPJ ou recibo
+    <label>Buscar segurado, CPF/CNPJ, apólice ou telefone
       <input type="search" id="f-busca" placeholder="Digite para buscar…">
     </label>
     <label>Seguradora <select id="f-seg"><option value="">Todas</option></select></label>
@@ -119,6 +120,7 @@ td.seg-nome{white-space:normal;min-width:220px;font-weight:500}
     <label>Cancela em até (dias) <input type="number" id="f-cancela" min="0" placeholder="ex.: 10"></label>
     <label>Atraso mínimo (dias) <input type="number" id="f-atraso" min="0" placeholder="ex.: 30"></label>
     <label>Ramo <select id="f-ramo"><option value="">Todos</option></select></label>
+    <label>Pagamento <select id="f-pag"><option value="">Todos</option></select></label>
     <button class="link" id="btn-limpar">Limpar filtros</button>
     <div style="flex:1"></div>
     <button id="btn-csv">Exportar para Excel (CSV)</button>
@@ -153,14 +155,15 @@ let ordem = {col: "dias_cancelar", asc: true};
 const COLS = {
   abertas: [
     ["risco","Risco"],["segurado","Segurado"],["cpf_cnpj","CPF/CNPJ"],["seguradora","Seguradora"],
-    ["ramo","Ramo"],["recibo","Recibo"],["parcela","Parc.","num"],["vencimento","Vencimento"],
+    ["apolice","Apólice"],["ramo","Ramo"],["recibo","Recibo"],["parcela","Parc.","num"],["vencimento","Vencimento"],
     ["dias_atraso","Dias em atraso","num"],["prev_cancelamento","Prev. cancelamento"],
-    ["dias_cancelar","Dias p/ cancelar","num"],["valor","Valor","num"],["aberta_desde","Na lista desde"],
+    ["dias_cancelar","Dias p/ cancelar","num"],["valor","Valor","num"],["pagamento","Pagamento"],
+    ["telefone","Telefone"],["situacao","Situação na seguradora"],["aberta_desde","Na lista desde"],
   ],
   regularizadas: [
-    ["segurado","Segurado"],["cpf_cnpj","CPF/CNPJ"],["seguradora","Seguradora"],["ramo","Ramo"],
+    ["segurado","Segurado"],["cpf_cnpj","CPF/CNPJ"],["seguradora","Seguradora"],["apolice","Apólice"],["ramo","Ramo"],
     ["recibo","Recibo"],["parcela","Parc.","num"],["vencimento","Vencimento"],["valor","Valor","num"],
-    ["visto_ate","Última vez em aberto"],
+    ["pagamento","Pagamento"],["telefone","Telefone"],["visto_ate","Última vez em aberto"],
   ],
 };
 
@@ -206,6 +209,7 @@ async function carregarParcelas() {
   };
   preencher($("#f-seg"), parcelas.map(p => p.seguradora));
   preencher($("#f-ramo"), parcelas.map(p => p.ramo));
+  preencher($("#f-pag"), parcelas.map(p => p.pagamento));
   desenharKpis(); desenharTabela();
 }
 
@@ -232,11 +236,11 @@ function desenharKpis() {
 function filtradas() {
   const base = aba === "abertas" ? parcelas : regularizadas;
   const busca = SEM_ACENTO($("#f-busca").value.trim()), buscaNum = busca.replace(/\D/g, "");
-  const seg = $("#f-seg").value, risco = $("#f-risco").value, ramo = $("#f-ramo").value;
+  const seg = $("#f-seg").value, risco = $("#f-risco").value, ramo = $("#f-ramo").value, pag = $("#f-pag").value;
   const cancela = $("#f-cancela").value, atraso = $("#f-atraso").value;
   return base.filter(p =>
-    (!busca || SEM_ACENTO(p.segurado).includes(busca) || (buscaNum && ((p.cpf_cnpj||"").includes(buscaNum) || (p.recibo||"").includes(buscaNum)))) &&
-    (!seg || p.seguradora === seg) && (!ramo || p.ramo === ramo) &&
+    (!busca || SEM_ACENTO(p.segurado).includes(busca) || (buscaNum && [p.cpf_cnpj, p.recibo, p.apolice, p.telefone].some(x => (x||"").replace(/\D/g,"").includes(buscaNum)))) &&
+    (!seg || p.seguradora === seg) && (!ramo || p.ramo === ramo) && (!pag || p.pagamento === pag) &&
     (aba !== "abertas" || !risco || p.risco === risco) &&
     (aba !== "abertas" || cancela === "" || (p.dias_cancelar != null && p.dias_cancelar <= +cancela)) &&
     (aba !== "abertas" || atraso === "" || (p.dias_atraso != null && p.dias_atraso >= +atraso))
@@ -273,7 +277,7 @@ function desenharTabela() {
     `<th class="${t||""}" data-col="${c}">${rot} <span class="seta">${ordem.col === c ? (ordem.asc ? "▲" : "▼") : ""}</span></th>`).join("") + "</tr>";
   const fatia = lista.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA);
   $("#tabela tbody").innerHTML = fatia.length ? fatia.map(p => "<tr>" + cols.map(([c,,t]) =>
-    `<td class="${t||""} ${c === "segurado" ? "seg-nome" : ""}">${celula(p, c)}</td>`).join("") + "</tr>").join("")
+    `<td class="${t||""} ${c === "segurado" ? "seg-nome" : c === "situacao" ? "quebra" : ""}">${celula(p, c)}</td>`).join("") + "</tr>").join("")
     : `<tr><td colspan="${cols.length}" class="vazio">${aba === "abertas" ? "Nenhuma parcela encontrada com esses filtros." : "Nenhuma parcela saiu da lista desde a extração anterior."}</td></tr>`;
   const total = lista.reduce((a,p) => a + (p.valor||0), 0);
   $("#contagem").textContent = `${lista.length} parcela(s) · ${BRL(total)}`;
@@ -330,9 +334,9 @@ $("#btn-rodar").onclick = async () => {
 
 // ---------------------------------------------------------------- eventos
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-["#f-busca","#f-seg","#f-risco","#f-cancela","#f-atraso","#f-ramo"].forEach(id =>
+["#f-busca","#f-seg","#f-risco","#f-cancela","#f-atraso","#f-ramo","#f-pag"].forEach(id =>
   $(id).addEventListener("input", () => { pagina = 0; desenharKpis(); desenharTabela(); }));
-$("#btn-limpar").onclick = () => { ["#f-busca","#f-seg","#f-risco","#f-cancela","#f-atraso","#f-ramo"].forEach(id => $(id).value = ""); pagina = 0; desenharKpis(); desenharTabela(); };
+$("#btn-limpar").onclick = () => { ["#f-busca","#f-seg","#f-risco","#f-cancela","#f-atraso","#f-ramo","#f-pag"].forEach(id => $(id).value = ""); pagina = 0; desenharKpis(); desenharTabela(); };
 $("#btn-csv").onclick = exportarCSV;
 $("#pg-ant").onclick = () => { pagina--; desenharTabela(); };
 $("#pg-prox").onclick = () => { pagina++; desenharTabela(); };
