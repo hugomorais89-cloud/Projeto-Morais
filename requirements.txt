@@ -2,3 +2,5 @@ playwright>=1.47
 pandas>=2.2
 openpyxl>=3.1
 python-dotenv>=1.0
+flask>=3.0
+waitress>=3.0

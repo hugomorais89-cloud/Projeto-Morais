@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Inadimplência</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%231f3864%22/%3E%3Cpath d=%22M4 11V7M8 11V4M12 11V8%22 stroke=%22white%22 stroke-width=%222%22/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f4f6f9; --card:#fff; --texto:#1b2430; --sub:#5f6b7a; --linha:#e3e8ef;
+  --azul:#1f3864; --azul2:#2f5597;
+  --ok:#1e8e4e; --ok-bg:#e3f5ea; --erro:#c62828; --erro-bg:#fdecea;
+  --pend:#8a94a3; --pend-bg:#eef1f5;
+  --vencido:#6d1b1b; --vencido-bg:#f3d9d9; --critico:#c62828; --critico-bg:#fdecea;
+  --atencao:#b26a00; --atencao-bg:#fff3dd; --monitorar:#2f5597; --monitorar-bg:#e6eefb;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--texto)}
+header{background:var(--azul);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;font-weight:600}
+header .sub{opacity:.8;font-size:13px}
+header .esp{flex:1}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--linha);background:#fff;color:var(--texto);padding:7px 14px}
+button.prim{background:#fff;color:var(--azul);border:none;font-weight:600}
+button.prim:disabled{opacity:.6;cursor:wait}
+button.link{border:none;background:none;color:var(--azul2);padding:4px 6px}
+main{max-width:1440px;margin:0 auto;padding:20px 24px 60px}
+h2{font-size:15px;margin:28px 0 12px;color:var(--azul);text-transform:uppercase;letter-spacing:.04em}
+h2 small{font-weight:400;text-transform:none;letter-spacing:0;color:var(--sub);margin-left:8px}
+.faixa{display:flex;gap:10px;align-items:center;padding:12px 16px;border-radius:8px;font-weight:600}
+.faixa.ok{background:var(--ok-bg);color:var(--ok)} .faixa.erro{background:var(--erro-bg);color:var(--erro)} .faixa.pend{background:var(--pend-bg);color:#4a5462}
+.grade-seg{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:12px}
+.seg{background:var(--card);border:1px solid var(--linha);border-left:5px solid var(--pend);border-radius:8px;padding:12px 14px}
+.seg.ok{border-left-color:var(--ok)} .seg.erro{border-left-color:var(--erro)}
+.seg .topo{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.seg .nome{font-weight:700}
+.selo{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.selo.ok{background:var(--ok-bg);color:var(--ok)} .selo.erro{background:var(--erro-bg);color:var(--erro)} .selo.pend{background:var(--pend-bg);color:#4a5462}
+.seg .info{color:var(--sub);font-size:12.5px;margin-top:6px}
+.seg .det{color:var(--erro);font-size:12px;margin-top:6px;word-break:break-word}
+.hist{display:flex;gap:3px;margin-top:10px}
+.hist i{width:14px;height:14px;border-radius:3px;background:var(--pend-bg);display:block}
+.hist i.OK{background:var(--ok)} .hist i.ERRO{background:var(--erro)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--linha);border-radius:8px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s}
+.kpi:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.kpi.ativo{outline:2px solid var(--azul2)}
+.kpi .rot{color:var(--sub);font-size:12.5px}
+.kpi .val{font-size:24px;font-weight:700;margin-top:4px}
+.kpi .sub{font-size:12.5px;color:var(--sub);margin-top:2px}
+.kpi.critico .val{color:var(--critico)} .kpi.vencido .val{color:var(--vencido)} .kpi.atencao .val{color:var(--atencao)}
+.filtros{background:var(--card);border:1px solid var(--linha);border-radius:8px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.filtros label{display:flex;flex-direction:column;font-size:12px;color:var(--sub);gap:4px}
+.filtros input,.filtros select{font:inherit;padding:6px 8px;border:1px solid var(--linha);border-radius:6px;min-width:120px;background:#fff}
+.filtros input[type=search]{min-width:240px}
+.filtros input[type=number]{min-width:0;width:110px}
+.abas{display:flex;gap:4px;margin-top:16px;border-bottom:1px solid var(--linha)}
+.abas button{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;padding:8px 14px;color:var(--sub)}
+.abas button.ativa{border-bottom-color:var(--azul2);color:var(--azul);font-weight:600}
+.tabela-wrap{background:var(--card);border:1px solid var(--linha);border-top:none;border-radius:0 0 8px 8px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--linha);white-space:nowrap}
+th{background:#f8fafc;position:sticky;top:0;cursor:pointer;user-select:none;font-weight:600;color:#3b4654}
+th.num,td.num{text-align:right}
+th .seta{opacity:.5;font-size:10px}
+tbody tr:hover{background:#f8fbff}
+td.seg-nome{white-space:normal;min-width:220px;font-weight:500}
+.risco{font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;display:inline-block}
+.risco.vencido{background:var(--vencido-bg);color:var(--vencido)}
+.risco.critico{background:var(--critico-bg);color:var(--critico)}
+.risco.atencao{background:var(--atencao-bg);color:var(--atencao)}
+.risco.monitorar{background:var(--monitorar-bg);color:var(--monitorar)}
+.rodape-tab{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;color:var(--sub);font-size:12.5px;flex-wrap:wrap;gap:8px}
+.vazio{padding:40px;text-align:center;color:var(--sub)}
+.legenda{color:var(--sub);font-size:12px;margin-top:8px}
+#log{background:#0f1720;color:#cfe3ff;font:12px/1.4 Consolas,monospace;padding:10px;border-radius:6px;max-height:220px;overflow:auto;white-space:pre-wrap;margin-top:10px;display:none}
+@media (max-width:640px){
+  header,main{padding-left:16px;padding-right:16px}
+  .filtros input[type=search]{min-width:0;width:100%}
+  .filtros label{flex:1 1 140px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Painel de Inadimplência</h1>
+    <div class="sub" id="sub-cab">Carregando…</div>
+  </div>
+  <div class="esp"></div>
+  <button class="prim" id="btn-rodar" title="Executa o robô agora em todas as seguradoras">Atualizar agora</button>
+</header>
+
+<main>
+  <h2>Extração de hoje <small id="data-hoje"></small></h2>
+  <div id="faixa" class="faixa pend">Carregando…</div>
+  <pre id="log"></pre>
+  <div class="grade-seg" id="grade-seg"></div>
+  <div class="legenda">Quadradinhos: últimos 14 dias (verde = extraiu, vermelho = erro, cinza = não rodou).</div>
+
+  <h2>Visão geral <small>clique em um indicador para filtrar</small></h2>
+  <div class="kpis" id="kpis"></div>
+
+  <h2>Parcelas em aberto</h2>
+  <div class="filtros">
+    <label>Buscar segurado, CPF/CNPJ ou recibo
+      <input type="search" id="f-busca" placeholder="Digite para buscar…">
+    </label>
+    <label>Seguradora <select id="f-seg"><option value="">Todas</option></select></label>
+    <label>Risco de cancelamento
+      <select id="f-risco">
+        <option value="">Todos</option>
+        <option value="vencido">Prazo de cancelamento vencido</option>
+        <option value="critico">Crítico (até 7 dias)</option>
+        <option value="atencao">Atenção (8 a 15 dias)</option>
+        <option value="monitorar">Monitorar (mais de 15 dias)</option>
+      </select>
+    </label>
+    <label>Cancela em até (dias) <input type="number" id="f-cancela" min="0" placeholder="ex.: 10"></label>
+    <label>Atraso mínimo (dias) <input type="number" id="f-atraso" min="0" placeholder="ex.: 30"></label>
+    <label>Ramo <select id="f-ramo"><option value="">Todos</option></select></label>
+    <button class="link" id="btn-limpar">Limpar filtros</button>
+    <div style="flex:1"></div>
+    <button id="btn-csv">Exportar para Excel (CSV)</button>
+  </div>
+
+  <div class="abas">
+    <button class="ativa" data-aba="abertas">Em aberto</button>
+    <button data-aba="regularizadas">Saíram da lista (provavelmente pagas)</button>
+  </div>
+  <div class="tabela-wrap"><table id="tabela"><thead></thead><tbody></tbody></table></div>
+  <div class="rodape-tab">
+    <span id="contagem"></span>
+    <span><button class="link" id="pg-ant">‹ Anterior</button> <span id="pg-info"></span> <button class="link" id="pg-prox">Próxima ›</button></span>
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const BRL = v => v == null ? "" : v.toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+const DATA = iso => iso ? iso.slice(0,10).split("-").reverse().join("/") : "";
+const HORA = iso => iso ? iso.slice(11,16) : "";
+const DOC = d => !d ? "" : d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+                  : d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : d;
+const SEM_ACENTO = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const ROT_RISCO = {vencido:"Prazo vencido", critico:"Crítico", atencao:"Atenção", monitorar:"Monitorar"};
+const ORDEM_RISCO = {vencido:0, critico:1, atencao:2, monitorar:3};
+
+let parcelas = [], regularizadas = [], aba = "abertas", pagina = 0;
+const POR_PAGINA = 50;
+let ordem = {col: "dias_cancelar", asc: true};
+
+const COLS = {
+  abertas: [
+    ["risco","Risco"],["segurado","Segurado"],["cpf_cnpj","CPF/CNPJ"],["seguradora","Seguradora"],
+    ["ramo","Ramo"],["recibo","Recibo"],["parcela","Parc.","num"],["vencimento","Vencimento"],
+    ["dias_atraso","Dias em atraso","num"],["prev_cancelamento","Prev. cancelamento"],
+    ["dias_cancelar","Dias p/ cancelar","num"],["valor","Valor","num"],["aberta_desde","Na lista desde"],
+  ],
+  regularizadas: [
+    ["segurado","Segurado"],["cpf_cnpj","CPF/CNPJ"],["seguradora","Seguradora"],["ramo","Ramo"],
+    ["recibo","Recibo"],["parcela","Parc.","num"],["vencimento","Vencimento"],["valor","Valor","num"],
+    ["visto_ate","Última vez em aberto"],
+  ],
+};
+
+async function api(url, opt) {
+  const r = await fetch(url, opt);
+  if (!r.ok && r.status !== 409) throw new Error("Erro " + r.status);
+  return r.json();
+}
+
+// ---------------------------------------------------------------- status do dia
+async function carregarPainel() {
+  const p = await api("/api/painel");
+  $("#data-hoje").textContent = DATA(p.hoje);
+  const u = p.ultima_execucao;
+  $("#sub-cab").textContent = u ? `Última execução do robô: ${DATA(u.fim)} às ${HORA(u.fim)}` : "O robô ainda não foi executado";
+  const r = p.resumo_hoje, faixa = $("#faixa");
+  if (r.erro) { faixa.className = "faixa erro"; faixa.textContent = `⚠ ${r.erro} de ${r.total} seguradora(s) com erro hoje — ${r.ok} extraída(s) com sucesso.`; }
+  else if (r.pendente) { faixa.className = "faixa pend"; faixa.textContent = `${r.ok} de ${r.total} seguradora(s) extraída(s) hoje — ${r.pendente} ainda não rodou.`; }
+  else { faixa.className = "faixa ok"; faixa.textContent = r.total === 1 ? "✔ A seguradora foi extraída com sucesso hoje." : `✔ Todas as ${r.total} seguradoras foram extraídas com sucesso hoje.`; }
+
+  $("#grade-seg").innerHTML = p.seguradoras.map(s => {
+    const h = s.hoje, cls = !h ? "pend" : h.situacao === "OK" ? "ok" : "erro";
+    const selo = !h ? "Não rodou hoje" : h.situacao === "OK" ? "Extraído" : "Erro";
+    const info = h && h.situacao === "OK"
+      ? `${HORA(h.horario)} · ${h.quantidade} parcelas · ${BRL(h.valor_total)}`
+      : s.ultima_ok ? `Último sucesso: ${DATA(s.ultima_ok)} ${HORA(s.ultima_ok)}` : "Nenhuma extração com sucesso ainda";
+    const det = h && h.situacao !== "OK" ? `<div class="det">${esc(h.detalhe || "")}</div>` : "";
+    const hist = s.historico.map((x,i) => `<i class="${x||""}" title="${DATA(p.dias[i])}: ${x || "não rodou"}"></i>`).join("");
+    return `<div class="seg ${cls}"><div class="topo"><span class="nome">${esc(s.nome)}</span><span class="selo ${cls}">${selo}</span></div>
+            <div class="info">${info}</div>${det}<div class="hist">${hist}</div></div>`;
+  }).join("");
+  mostrarRobo(p.robo);
+}
+
+// ---------------------------------------------------------------- parcelas
+async function carregarParcelas() {
+  const d = await api("/api/parcelas");
+  parcelas = d.parcelas; regularizadas = d.regularizadas;
+  const preencher = (sel, valores) => {
+    const atual = sel.value;
+    sel.innerHTML = sel.options[0].outerHTML + [...new Set(valores)].filter(Boolean).sort().map(v => `<option>${esc(v)}</option>`).join("");
+    sel.value = atual;
+  };
+  preencher($("#f-seg"), parcelas.map(p => p.seguradora));
+  preencher($("#f-ramo"), parcelas.map(p => p.ramo));
+  desenharKpis(); desenharTabela();
+}
+
+function desenharKpis() {
+  const soma = l => l.reduce((a,p) => a + (p.valor||0), 0);
+  const por = r => parcelas.filter(p => p.risco === r);
+  const segurados = new Set(parcelas.map(p => p.cpf_cnpj || p.segurado)).size;
+  const k = [
+    ["", "Parcelas em aberto", parcelas.length, `${BRL(soma(parcelas))} · ${segurados} segurados`],
+    ["vencido", "Prazo de cancelamento vencido", por("vencido").length, BRL(soma(por("vencido")))],
+    ["critico", "Cancelam em até 7 dias", por("critico").length, BRL(soma(por("critico")))],
+    ["atencao", "Cancelam em 8 a 15 dias", por("atencao").length, BRL(soma(por("atencao")))],
+    ["monitorar", "Mais de 15 dias", por("monitorar").length, BRL(soma(por("monitorar")))],
+  ];
+  const atual = $("#f-risco").value;
+  $("#kpis").innerHTML = k.map(([r, rot, n, sub]) =>
+    `<div class="kpi ${r} ${atual === r && aba === "abertas" ? "ativo" : ""}" data-risco="${r}">
+       <div class="rot">${rot}</div><div class="val">${n}</div><div class="sub">${sub}</div></div>`).join("");
+  document.querySelectorAll(".kpi").forEach(el => el.onclick = () => {
+    $("#f-risco").value = el.dataset.risco; trocarAba("abertas"); pagina = 0; desenharKpis(); desenharTabela();
+  });
+}
+
+function filtradas() {
+  const base = aba === "abertas" ? parcelas : regularizadas;
+  const busca = SEM_ACENTO($("#f-busca").value.trim()), buscaNum = busca.replace(/\D/g, "");
+  const seg = $("#f-seg").value, risco = $("#f-risco").value, ramo = $("#f-ramo").value;
+  const cancela = $("#f-cancela").value, atraso = $("#f-atraso").value;
+  return base.filter(p =>
+    (!busca || SEM_ACENTO(p.segurado).includes(busca) || (buscaNum && ((p.cpf_cnpj||"").includes(buscaNum) || (p.recibo||"").includes(buscaNum)))) &&
+    (!seg || p.seguradora === seg) && (!ramo || p.ramo === ramo) &&
+    (aba !== "abertas" || !risco || p.risco === risco) &&
+    (aba !== "abertas" || cancela === "" || (p.dias_cancelar != null && p.dias_cancelar <= +cancela)) &&
+    (aba !== "abertas" || atraso === "" || (p.dias_atraso != null && p.dias_atraso >= +atraso))
+  );
+}
+
+function ordenar(lista) {
+  const {col, asc} = ordem, f = asc ? 1 : -1;
+  const val = p => col === "risco" ? ORDEM_RISCO[p.risco] : p[col];
+  return [...lista].sort((a,b) => {
+    const x = val(a), y = val(b);
+    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+    return (typeof x === "number" ? x - y : String(x).localeCompare(String(y), "pt-BR", {numeric:true})) * f;
+  });
+}
+
+function celula(p, col) {
+  const v = p[col];
+  switch (col) {
+    case "risco": return `<span class="risco ${v}">${ROT_RISCO[v]}</span>`;
+    case "cpf_cnpj": return DOC(v);
+    case "valor": return BRL(v);
+    case "vencimento": case "prev_cancelamento": case "aberta_desde": case "visto_ate": return DATA(v);
+    case "dias_cancelar": return v == null ? "—" : v < 0 ? `${-v} dia(s) atrás` : v === 0 ? "hoje" : v;
+    default: return esc(v ?? "");
+  }
+}
+
+function desenharTabela() {
+  const cols = COLS[aba], lista = ordenar(filtradas());
+  const paginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  pagina = Math.min(pagina, paginas - 1);
+  $("#tabela thead").innerHTML = "<tr>" + cols.map(([c, rot, t]) =>
+    `<th class="${t||""}" data-col="${c}">${rot} <span class="seta">${ordem.col === c ? (ordem.asc ? "▲" : "▼") : ""}</span></th>`).join("") + "</tr>";
+  const fatia = lista.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA);
+  $("#tabela tbody").innerHTML = fatia.length ? fatia.map(p => "<tr>" + cols.map(([c,,t]) =>
+    `<td class="${t||""} ${c === "segurado" ? "seg-nome" : ""}">${celula(p, c)}</td>`).join("") + "</tr>").join("")
+    : `<tr><td colspan="${cols.length}" class="vazio">${aba === "abertas" ? "Nenhuma parcela encontrada com esses filtros." : "Nenhuma parcela saiu da lista desde a extração anterior."}</td></tr>`;
+  const total = lista.reduce((a,p) => a + (p.valor||0), 0);
+  $("#contagem").textContent = `${lista.length} parcela(s) · ${BRL(total)}`;
+  $("#pg-info").textContent = `Página ${pagina + 1} de ${paginas}`;
+  $("#pg-ant").disabled = pagina === 0; $("#pg-prox").disabled = pagina >= paginas - 1;
+  document.querySelectorAll("#tabela th").forEach(th => th.onclick = () => {
+    const c = th.dataset.col; ordem = {col: c, asc: ordem.col === c ? !ordem.asc : true}; desenharTabela();
+  });
+}
+
+function trocarAba(nova) {
+  aba = nova; pagina = 0;
+  document.querySelectorAll(".abas button").forEach(b => b.classList.toggle("ativa", b.dataset.aba === aba));
+  if (aba === "regularizadas" && !COLS.regularizadas.some(([c]) => c === ordem.col)) ordem = {col:"segurado", asc:true};
+  if (aba === "abertas" && !COLS.abertas.some(([c]) => c === ordem.col)) ordem = {col:"dias_cancelar", asc:true};
+}
+
+function exportarCSV() {
+  const cols = COLS[aba], lista = ordenar(filtradas());
+  const txt = v => v == null ? "" : String(v).replace(/"/g, '""');
+  const fmt = (p, c) => {
+    const v = p[c];
+    if (c === "risco") return ROT_RISCO[v];
+    if (["vencimento","prev_cancelamento","aberta_desde","visto_ate"].includes(c)) return DATA(v);
+    if (c === "valor") return v == null ? "" : v.toFixed(2).replace(".", ",");
+    if (c === "cpf_cnpj" || c === "recibo") return v ? `="${v}"` : "";
+    return v;
+  };
+  const linhas = [cols.map(c => c[1]).join(";"), ...lista.map(p => cols.map(([c]) => `"${txt(fmt(p, c))}"`).join(";"))];
+  const blob = new Blob(["﻿" + linhas.join("\r\n")], {type: "text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `inadimplencia_${aba}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+// ---------------------------------------------------------------- rodar robô
+let acompanhando = null;
+function mostrarRobo(r) {
+  const btn = $("#btn-rodar"), log = $("#log");
+  btn.disabled = r.rodando; btn.textContent = r.rodando ? "Robô em execução…" : "Atualizar agora";
+  if (r.rodando || r.log) { log.style.display = "block"; log.textContent = r.log || "Iniciando…"; log.scrollTop = log.scrollHeight; }
+  if (r.rodando && !acompanhando) acompanhando = setInterval(acompanhar, 3000);
+}
+async function acompanhar() {
+  const r = await api("/api/executar");
+  mostrarRobo(r);
+  if (!r.rodando) { clearInterval(acompanhando); acompanhando = null; await carregarPainel(); await carregarParcelas(); }
+}
+$("#btn-rodar").onclick = async () => {
+  if (!confirm("Executar o robô agora em todas as seguradoras? Leva alguns minutos.")) return;
+  const r = await api("/api/executar", {method: "POST"});
+  if (!r.ok) alert(r.mensagem);
+  mostrarRobo(await api("/api/executar"));
+};
+
+// ---------------------------------------------------------------- eventos
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+["#f-busca","#f-seg","#f-risco","#f-cancela","#f-atraso","#f-ramo"].forEach(id =>
+  $(id).addEventListener("input", () => { pagina = 0; desenharKpis(); desenharTabela(); }));
+$("#btn-limpar").onclick = () => { ["#f-busca","#f-seg","#f-risco","#f-cancela","#f-atraso","#f-ramo"].forEach(id => $(id).value = ""); pagina = 0; desenharKpis(); desenharTabela(); };
+$("#btn-csv").onclick = exportarCSV;
+$("#pg-ant").onclick = () => { pagina--; desenharTabela(); };
+$("#pg-prox").onclick = () => { pagina++; desenharTabela(); };
+document.querySelectorAll(".abas button").forEach(b => b.onclick = () => { trocarAba(b.dataset.aba); desenharKpis(); desenharTabela(); });
+
+carregarPainel().then(carregarParcelas).catch(e => { $("#faixa").className = "faixa erro"; $("#faixa").textContent = "Não foi possível carregar o painel: " + e.message; });
+</script>
+</body>
+</html>

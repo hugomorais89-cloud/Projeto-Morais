@@ -11,3 +11,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Banco de dados local com o histórico (contém dados de clientes)
+dados/

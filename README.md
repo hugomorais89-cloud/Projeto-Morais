@@ -17,12 +17,40 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
   `SEGURADORA, SEGURADO, CPF/CNPJ, APÓLICE, RECIBO, RAMO, PARCELA, VENCIMENTO, DIAS EM ATRASO, VALOR, PREV. CANCELAMENTO, COMISSÃO`
   e, no fim, as colunas de controle da equipe em branco (`PRODUTOR, PAGAMENTO, NOVA DATA, CONTATO, DATA LIMITE`).
 
+## Painel web
+
+Um site para acompanhar tudo num lugar só, aberto pelo navegador:
+
+- **Extração de hoje**: se cada seguradora foi extraída com sucesso, deu erro (com o motivo) ou não rodou, mais um histórico dos últimos 14 dias.
+- **Visão geral**: total em aberto e quantas parcelas estão perto de cancelar. Clicar num indicador filtra a tabela.
+- **Parcelas em aberto** com filtros: busca por nome/CPF/recibo, seguradora, ramo, **risco de cancelamento**, "cancela em até X dias" e "atraso mínimo". Dá para ordenar por qualquer coluna e exportar o resultado para o Excel.
+- **Saíram da lista**: parcelas que estavam na extração anterior e sumiram (provavelmente pagas).
+- Botão **Atualizar agora**, que roda o robô na hora.
+
+Classificação de risco (pela data prevista de cancelamento informada pela seguradora):
+
+| Risco | Regra |
+|---|---|
+| Prazo vencido | a data prevista de cancelamento já passou |
+| Crítico | cancela em até 7 dias |
+| Atenção | cancela em 8 a 15 dias |
+| Monitorar | mais de 15 dias |
+
+Se uma seguradora não informar a data de cancelamento, o risco é calculado pelos dias de atraso
+(60+ crítico, 30+ atenção).
+
+**Como abrir:** dois cliques em `painel.bat` (deixe a janela aberta). No próprio computador:
+http://localhost:8050. Nos outros computadores do escritório: `http://<ip-do-computador>:8050`.
+Defina `PAINEL_USUARIO` e `PAINEL_SENHA` no `.env`. Sem senha, o painel só abre no próprio computador.
+
+O histórico fica em `dados/inadimplencia.db` (não vai para o GitHub).
+
 ## Instalação (uma vez, no computador do escritório com Windows)
 
 1. Instale o **Python 3.12+** em https://www.python.org/downloads/ e marque **"Add Python to PATH"**.
 2. Copie esta pasta para o computador (ex.: `C:\RoboInadimplencia`).
 3. Dê dois cliques em **`instalar.bat`**.
-4. Abra o arquivo **`.env`** no Bloco de Notas e preencha o usuário e a senha de cada seguradora.
+4. Abra o arquivo **`.env`** no Bloco de Notas e preencha o usuário e a senha de cada seguradora e a senha do painel.
    > O `.env` fica só nesse computador e nunca vai para o GitHub.
 
 ## Uso

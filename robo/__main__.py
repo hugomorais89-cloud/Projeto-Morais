@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import config
+from . import banco
 from .consolidar import gerar_planilha
 from .seguradoras import SEGURADORAS
 
@@ -51,6 +52,7 @@ def main(argv=None) -> int:
         log.error("Seguradora desconhecida: %s (opções: %s)", desconhecidas, list(SEGURADORAS))
         return 2
 
+    inicio = datetime.now()
     dados, status = [], []
     precisa_navegador = any(s not in arquivos_manuais for s in escolhidas)
     pw = navegador = None
@@ -100,6 +102,9 @@ def main(argv=None) -> int:
 
     destino = config.PASTA_SAIDAS / f"CONTROLE_INADIMPLENCIA_{datetime.now():%Y-%m-%d}.xlsx"
     gerar_planilha(dados, status, destino)
+    banco.salvar_execucao(inicio, status, {df["SEGURADORA"].iloc[0]: df for df in dados if len(df)},
+                          origem="manual" if arquivos_manuais else "robo")
+    log.info("Histórico gravado em %s", banco.ARQUIVO_BANCO)
     log.info("Planilha consolidada: %s", destino)
     log.info("Log desta execução: %s", arq_log)
     return 0 if all(s["situacao"] == "OK" for s in status) else 1

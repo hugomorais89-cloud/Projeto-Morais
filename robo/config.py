@@ -10,8 +10,9 @@ load_dotenv(RAIZ / ".env")
 PASTA_DOWNLOADS = RAIZ / "downloads"
 PASTA_SAIDAS = RAIZ / "saidas"
 PASTA_LOGS = RAIZ / "logs"
+PASTA_DADOS = RAIZ / "dados"
 
-for _p in (PASTA_DOWNLOADS, PASTA_SAIDAS, PASTA_LOGS):
+for _p in (PASTA_DOWNLOADS, PASTA_SAIDAS, PASTA_LOGS, PASTA_DADOS):
     _p.mkdir(exist_ok=True)
 
 DIAS_RETROATIVOS = int(os.getenv("DIAS_RETROATIVOS", "90"))
@@ -29,3 +30,9 @@ def credencial(prefixo: str) -> tuple[str, str]:
             f"Preencha {prefixo}_USUARIO e {prefixo}_SENHA no arquivo .env"
         )
     return usuario, senha
+
+
+# Painel web
+PAINEL_USUARIO = os.getenv("PAINEL_USUARIO", "morais").strip()
+PAINEL_SENHA = os.getenv("PAINEL_SENHA", "").strip()
+PAINEL_PORTA = int(os.getenv("PAINEL_PORTA", "8050"))
