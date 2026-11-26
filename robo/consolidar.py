@@ -5,12 +5,21 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
-from .seguradoras.base import COLUNAS
+from .seguradoras.base import COLUNAS, COLUNAS_EXTRAS
 
-AZUL = PatternFill("solid", fgColor="1F3864")
+AZUL = PatternFill("solid", fgColor="1F4E78")        # mesmo tom do modelo da equipe
+AZUL_EXTRA = PatternFill("solid", fgColor="5B7FA6")  # colunas extras trazidas pelo robô
+ROSA = PatternFill("solid", fgColor="FFC7CE", bgColor="FFC7CE")
+FORMAS_PAGAMENTO = ["CARTÃO", "DÉBITO", "PIX", "BOLETO"]
+# Larguras iguais às do modelo
+LARGURAS = {"SEGURADORA": 15, "SEGURADO": 56, "APÓLICE/CPF": 19, "PAGAMENTO": 14,
+            "PARCELA": 12, "VENCIMENTO": 16, "PRODUTOR": 21, "NOVA DATA": 17,
+            "CONTATO": 13, "DATA LIMITE": 15, "RAMO": 10, "DIAS EM ATRASO": 11}
 CINZA = PatternFill("solid", fgColor="F2F2F2")
 BRANCO_NEGRITO = Font(bold=True, color="FFFFFF")
 
@@ -42,7 +51,28 @@ def gerar_planilha(dados: list[pd.DataFrame], status: list[dict], destino: Path)
         resumo.to_excel(xw, sheet_name="Resumo", index=False, startrow=2)
 
         ws = xw.sheets["Inadimplência Consolidada"]
-        _formatar(ws, base, larguras={"SEGURADO": 40, "RAMO": 22})
+        _formatar(ws, base, larguras=LARGURAS)
+        for i, nome in enumerate(base.columns, start=1):
+            if nome in COLUNAS_EXTRAS:
+                ws.cell(row=1, column=i).fill = AZUL_EXTRA
+        ultima = max(len(base) + 1, 2) + 2000  # deixa espaço para linhas novas
+        letra = lambda nome: get_column_letter(list(base.columns).index(nome) + 1)
+        # Segurado repetido em rosa (mesma regra do modelo)
+        b = letra("SEGURADO")
+        ws.conditional_formatting.add(
+            f"{b}2:{b}{ultima}",
+            FormulaRule(formula=[f'AND({b}2<>"",COUNTIF(${b}$2:${b}${ultima},{b}2)>1)'],
+                        fill=ROSA, font=Font(color="9C0006")),
+        )
+        # Lista suspensa para forma de pagamento
+        dv = DataValidation(type="list", formula1='"' + ",".join(FORMAS_PAGAMENTO) + '"',
+                            allow_blank=True, showErrorMessage=False)
+        ws.add_data_validation(dv)
+        dv.add(f"{letra('PAGAMENTO')}2:{letra('PAGAMENTO')}{ultima}")
+        for col_nome in ("NOVA DATA", "CONTATO", "DATA LIMITE"):
+            c = letra(col_nome)
+            for r in range(2, len(base) + 2):
+                ws[f"{c}{r}"].number_format = "DD/MM/YYYY"
         for col_nome in ("VENCIMENTO", "PREV. CANCELAMENTO"):
             _formato_coluna(ws, base, col_nome, "DD/MM/YYYY")
         for col_nome in ("VALOR", "COMISSÃO"):

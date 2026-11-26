@@ -13,9 +13,13 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
 ## A planilha gerada
 
 - **Resumo**: uma linha por seguradora com a situação da extração (OK/ERRO), a quantidade de parcelas e o valor total.
-- **Inadimplência Consolidada**: uma linha por parcela em aberto:
-  `SEGURADORA, SEGURADO, CPF/CNPJ, APÓLICE, RECIBO, RAMO, PARCELA, VENCIMENTO, DIAS EM ATRASO, VALOR, PREV. CANCELAMENTO, COMISSÃO`
-  e, no fim, as colunas de controle da equipe em branco (`PRODUTOR, PAGAMENTO, NOVA DATA, CONTATO, DATA LIMITE`).
+- **Inadimplência Consolidada**: uma linha por parcela em aberto.
+  - As **10 primeiras colunas são iguais às do modelo da equipe**:
+    `SEGURADORA, SEGURADO, APÓLICE/CPF, PAGAMENTO, PARCELA, VENCIMENTO, PRODUTOR, NOVA DATA, CONTATO, DATA LIMITE`.
+    PAGAMENTO (com lista CARTÃO/DÉBITO/PIX/BOLETO), PRODUTOR, NOVA DATA, CONTATO e DATA LIMITE saem em branco para a equipe preencher.
+  - Depois vêm as colunas extras trazidas pelo robô (cabeçalho num azul mais claro):
+    `CPF/CNPJ, APÓLICE, RECIBO, RAMO, DIAS EM ATRASO, VALOR, PREV. CANCELAMENTO, COMISSÃO`.
+  - Segurado repetido fica destacado em rosa, como no modelo.
 
 ## Painel web
 
