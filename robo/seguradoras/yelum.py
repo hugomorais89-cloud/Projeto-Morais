@@ -148,10 +148,12 @@ class Yelum(Seguradora):
                 continue
             produto = texto(v(l, "produto")).upper()
             status = texto(v(l, "status"))
-            motivo = texto(v(l, "motivo"))
+            motivo = texto(v(l, "motivo")).strip(" -")
             atual = para_data(v(l, "venc_atual"))
-            if so_vencidas and atual:
-                status = f"{status} (reprogramada p/ {atual:%d/%m/%Y})"
+            if original and original < hoje and re.search(r"a vencer", status, re.I):
+                # parcela "A Vencer" no portal, mas com o vencimento original já passado
+                status = f"{status} (venc. original passou" + (
+                    f"; reprogramada p/ {atual:%d/%m/%Y})" if atual and atual != original else ")")
             linhas.append({
                 "SEGURADORA": "ALIRO" if "ALIRO" in produto else "YELUM",
                 "SEGURADO": texto(v(l, "nome")),

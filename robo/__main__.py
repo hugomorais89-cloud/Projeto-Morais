@@ -46,7 +46,9 @@ def main(argv=None) -> int:
         nome, _, caminho = item.partition("=")
         arquivos_manuais[nome.strip().lower()] = Path(caminho.strip())
 
-    escolhidas = [s.lower() for s in args.seguradoras] or list(arquivos_manuais) or list(SEGURADORAS)
+    escolhidas = [s.lower() for s in args.seguradoras]
+    escolhidas += [s for s in arquivos_manuais if s not in escolhidas]
+    escolhidas = escolhidas or list(SEGURADORAS)
     desconhecidas = [s for s in escolhidas if s not in SEGURADORAS]
     if desconhecidas:
         log.error("Seguradora desconhecida: %s (opções: %s)", desconhecidas, list(SEGURADORAS))

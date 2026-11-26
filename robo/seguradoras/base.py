@@ -141,7 +141,9 @@ def para_data(valor):
     """'17/11/2026' -> date(2026, 11, 17). Retorna None se vazio/inválido."""
     if valor is None or (isinstance(valor, float) and pd.isna(valor)):
         return None
-    d = pd.to_datetime(str(valor).strip(), dayfirst=True, errors="coerce")
+    t = str(valor).strip()
+    iso = bool(re.match(r"^\d{4}-\d{2}-\d{2}", t))  # ex.: 2026-11-22T00:00:00 (EZZE)
+    d = pd.to_datetime(t, dayfirst=not iso, errors="coerce")
     return None if pd.isna(d) else d.date()
 
 

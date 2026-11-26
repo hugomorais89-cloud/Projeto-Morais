@@ -100,7 +100,6 @@ class TokioMarine(Seguradora):
             "parcela": achar_coluna(df, "PARCELA"),
             "vencimento": achar_coluna(df, "VENCIMENTO"),
             "valor": achar_coluna(df, "VALOR"),
-            "vigencia": achar_coluna(df, "VIGENCIA_PROPORCIONAL", "VIGENCIA"),
             "telefone": achar_coluna(df, "TELEFONE"),
             "pagamento": achar_coluna(df, "FORMA_PAGAMENTO", "FORMA"),
             "motivo": achar_coluna(df, "MOTIVO"),
@@ -127,8 +126,8 @@ class TokioMarine(Seguradora):
                 "PARCELA": texto(v(l, "parcela")),
                 "VENCIMENTO": para_data(v(l, "vencimento")),
                 "VALOR": para_numero(v(l, "valor")),
-                # Vigência proporcional = até quando o seguro cobre sem o pagamento
-                "PREV. CANCELAMENTO": para_data(v(l, "vigencia")),
+                # PREV. CANCELAMENTO fica em branco: o relatório da Tokio não informa
+                # (a "Vigência Proporcional" não é a data de cancelamento)
                 "TELEFONE": texto(v(l, "telefone")),
                 "PAGAMENTO": forma_pagamento(v(l, "pagamento")),
                 "SITUAÇÃO": texto(v(l, "motivo")),

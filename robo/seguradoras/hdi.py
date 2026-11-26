@@ -2,7 +2,7 @@
 
 Caminho no portal (conforme vídeo da equipe):
   hdi.com.br/hdidigital > login > menu "Parcela"
-  > Período de vencimento (de/até) > Buscar
+  > Período de vencimento (de/até) > Tipo de Parcelas: ATRASADAS > Buscar
   O portal não exporta Excel (só "Visualizar impressão" → PDF). Por isso o robô lê
   a tabela de resultados direto da tela e grava um CSV em downloads/.
 
@@ -75,14 +75,14 @@ class Hdi(Seguradora):
             campo.fill(f"{valor:%d/%m/%Y}")
             campo.press("Escape")
 
-        # Tipo de parcelas: prefere uma opção de atraso/pendência, se existir
-        tipo = achar(page, lambda f: f.locator("select:visible"), tempo=5, obrigatorio=False)
-        if tipo is not None:
-            opcoes = tipo.locator("option").all_inner_texts()
-            log.info("Tipos de parcela disponíveis: %s", opcoes)
-            preferida = next((o for o in opcoes if re.search(r"atras|pendente|aberto", o, re.I)), None)
-            if preferida:
-                tipo.select_option(label=preferida)
+        # Tipo de parcelas = ATRASADAS (só essas entram no relatório)
+        tipo = achar(page, lambda f: f.locator("select:visible").filter(
+            has=f.locator("option", has_text=re.compile("atrasad", re.I))), tempo=30, obrigatorio=False)
+        if tipo is None:
+            raise RuntimeError("Campo 'Tipo de Parcelas' com a opção ATRASADAS não encontrado")
+        opcoes = tipo.locator("option").all_inner_texts()
+        log.info("Tipos de parcela disponíveis: %s", opcoes)
+        tipo.select_option(label=next(o for o in opcoes if re.search("atrasad", o, re.I)))
 
         clicar_texto(page, "BUSCAR", exato=True, tempo=30)
         page.wait_for_timeout(5000)

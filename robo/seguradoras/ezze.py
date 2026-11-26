@@ -1,5 +1,8 @@
 """EZZE Seguros — Portal do Corretor.
 
+Arquivo Parcelas_Atraso.xlsx (conferido com o arquivo real de 26/11/2026):
+  Apólice, Endosso, Nome do Segurado, Parcela, Data Vencimento, Valor, Indicador de Atraso
+
 Caminho no portal (conforme vídeo da equipe):
   portal.ezzeseguros.com.br/Portal/Landing > ACESSAR > login > página inicial
   > seção "Minha gestão" > card "Parcelas em atraso" > Download (Parcelas_Atraso.xlsx)
@@ -80,6 +83,7 @@ class Ezze(Seguradora):
             "pagamento": achar_coluna(df, "FORMA", "MEIO", "TIPO_PAG"),
             "telefone": achar_coluna(df, "TELEFONE", "CELULAR", "FONE"),
             "situacao": achar_coluna(df, "STATUS", "SITUACAO"),
+            "atraso": achar_coluna(df, "INDICADOR_DE_ATRASO", "INDICADOR"),
             "cancelamento": achar_coluna(df, "CANCEL", "VIGENCIA"),
         }
         log.info("EZZE — colunas do arquivo: %s", list(df.columns))
@@ -96,6 +100,8 @@ class Ezze(Seguradora):
         for _, l in df.iterrows():
             if not (texto(v(l, "segurado")) or texto(v(l, "apolice"))):
                 continue
+            if c["atraso"] and texto(v(l, "atraso")).upper() in ("NAO", "NÃO", "N"):
+                continue  # o relatório marca se a parcela está de fato em atraso
             linhas.append({
                 "SEGURADO": texto(v(l, "segurado")),
                 "CPF/CNPJ": re.sub(r"\D", "", texto(v(l, "cpf"))),
@@ -107,6 +113,6 @@ class Ezze(Seguradora):
                 "PREV. CANCELAMENTO": para_data(v(l, "cancelamento")),
                 "TELEFONE": texto(v(l, "telefone")),
                 "PAGAMENTO": forma_pagamento(v(l, "pagamento")),
-                "SITUAÇÃO": texto(v(l, "situacao")),
+                "SITUAÇÃO": texto(v(l, "situacao")) or "Em atraso",
             })
         return montar_padrao(self.nome, linhas)
