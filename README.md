@@ -8,7 +8,7 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
 
 | Seguradora | Situação |
 |---|---|
-| Allianz (AllianzNet) | ✅ implementada — aguardando 1º teste no portal real |
+| Allianz (AllianzNet) | ✅ testada no portal real em 26/11/2026 (135 parcelas, ~20 s) |
 
 ## A planilha gerada
 
@@ -50,6 +50,11 @@ Repete o caminho que a equipe faz manualmente:
 Gestão → Financeiro → Gestão de Parcelas → aba *Gestão de Inadimplentes* →
 Status *Inadimplente*, vencimento dos últimos `DIAS_RETROATIVOS` dias (padrão 90) até hoje →
 *Pesquisar* → *Gerar Planilha*.
+
+Detalhes técnicos: a tela de parcelas é um sistema antigo dentro de um iframe (`/drbl13/`);
+os campos usados são `#status` (valor `1` = Inadimplente), `#dtInicio`, `#dtFim`,
+`#cmdPesquisar` e `#cmdGerarArquivo`. O CSV vem com `;`, uma linha em branco no topo
+e CPF no formato `="00000000000"` — tudo tratado na leitura.
 
 ## Adicionar uma nova seguradora
 

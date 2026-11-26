@@ -11,6 +11,7 @@ Colunas do CSV da Allianz:
 """
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -18,7 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 from .. import config
-from ..navegador import achar, achar_todos, clicar_texto, esperar_carregar
+from ..navegador import clicar_texto, esperar_carregar
 from .base import (
     Seguradora,
     achar_coluna,
@@ -30,6 +31,8 @@ from .base import (
 )
 
 URL_HOME = "https://www.allianznet.com.br/ngx-azb-epac/private/home"
+log = logging.getLogger("robo")
+LIMITE = 120_000  # ms — o sistema de parcelas da Allianz é lento para abrir
 
 
 class Allianz(Seguradora):
@@ -38,94 +41,75 @@ class Allianz(Seguradora):
     # ------------------------------------------------------------ navegação
     def baixar(self, page) -> Path:
         usuario, senha = config.credencial("ALLIANZ")
-
+        log.info("Abrindo AllianzNet e fazendo login")
         page.goto(URL_HOME, wait_until="domcontentloaded")
-        esperar_carregar(page)
-        self._login_se_necessario(page, usuario, senha)
+        self._login(page, usuario, senha)
 
-        # Menu: Gestão > Financeiro > Gestão de Parcelas
+        log.info("Menu: Gestão > Financeiro > Gestão de Parcelas")
         clicar_texto(page, "Gestão", exato=True)
         clicar_texto(page, "Financeiro")
         clicar_texto(page, "Gestão de Parcelas")
-        esperar_carregar(page)
 
-        # Aba "Gestão de Inadimplentes"
-        clicar_texto(page, "Gestão de Inadimplentes")
-        esperar_carregar(page)
+        # A tela de parcelas é um sistema antigo carregado dentro de um iframe
+        tela = self._quadro_parcelas(page)
+        log.info("Abrindo aba Gestão de Inadimplentes (pode levar ~1 min)")
+        tela.locator("#irGestaoInadimplentes:visible").first.click(timeout=LIMITE)
+        tela.locator("#dtInicio").wait_for(state="visible", timeout=LIMITE)
 
-        self._preencher_filtro(page)
+        hoje = date.today()
+        inicio = hoje - timedelta(days=config.DIAS_RETROATIVOS)
+        log.info("Filtro: Inadimplente, vencimento de %s a %s", f"{inicio:%d/%m/%Y}", f"{hoje:%d/%m/%Y}")
+        # Status = Inadimplente (valor "1"). O <select> fica oculto atrás de um
+        # componente visual, por isso é definido via JavaScript.
+        tela.locator("#status").evaluate(
+            "e => { e.value = '1'; e.dispatchEvent(new Event('change', {bubbles: true}));"
+            " if (window.jQuery && jQuery(e).selectpicker) jQuery(e).selectpicker('refresh'); }"
+        )
+        for seletor, valor in (("#dtInicio", inicio), ("#dtFim", hoje)):
+            campo = tela.locator(seletor)
+            campo.click()
+            campo.fill(f"{valor:%d/%m/%Y}")
+            campo.press("Escape")  # fecha o calendário
 
-        clicar_texto(page, "Pesquisar", exato=True, papel="button")
-        esperar_carregar(page, extra_ms=3000)
+        tela.locator("#cmdPesquisar").click()
+        botao = tela.locator("#cmdGerarArquivo")
+        botao.wait_for(state="visible", timeout=LIMITE)
 
-        botao = achar(page, lambda f: f.get_by_text("Gerar Planilha"), tempo=60)
-        with page.expect_download(timeout=120_000) as info:
+        log.info("Gerando planilha")
+        with page.expect_download(timeout=LIMITE) as info:
             botao.click()
         download = info.value
-        destino = config.PASTA_DOWNLOADS / (
-            f"allianz_{date.today():%Y-%m-%d}{Path(download.suggested_filename).suffix or '.csv'}"
-        )
+        extensao = Path(download.suggested_filename).suffix or ".csv"
+        destino = config.PASTA_DOWNLOADS / f"allianz_{date.today():%Y-%m-%d}{extensao}"
         download.save_as(destino)
         return destino
 
-    def _login_se_necessario(self, page, usuario: str, senha: str) -> None:
-        campo_senha = page.locator("input[type=password]")
+    @staticmethod
+    def _quadro_parcelas(page):
+        """Espera o iframe do sistema de parcelas (endereço contém 'drbl13')."""
+        for _ in range(LIMITE // 1000):
+            for frame in page.frames:
+                if "/drbl13/" in frame.url:
+                    return frame
+            page.wait_for_timeout(1000)
+        raise TimeoutError("Tela de Gestão de Parcelas não carregou")
+
+    def _login(self, page, usuario: str, senha: str) -> None:
+        campo_senha = page.locator("input[name=password]")
         try:
-            campo_senha.first.wait_for(state="visible", timeout=15_000)
+            campo_senha.wait_for(state="visible", timeout=30_000)
         except Exception:
-            return  # já está logado (sessão ativa)
-
-        # O campo de usuário é o input de texto visível antes da senha
-        campo_usuario = page.locator(
-            "input[type=text]:visible, input[type=email]:visible, "
-            "input:not([type]):visible"
-        ).first
-        campo_usuario.fill(usuario)
-        campo_senha.first.fill(senha)
-
-        botao = page.get_by_role(
-            "button", name=re.compile(r"entrar|acessar|login|continuar", re.I)
-        )
-        if botao.count():
-            botao.first.click()
-        else:
-            campo_senha.first.press("Enter")
-
-        page.wait_for_url(re.compile(r"/private/"), timeout=60_000)
-        esperar_carregar(page)
-
-    def _preencher_filtro(self, page) -> None:
-        hoje = date.today()
-        inicio = hoje - timedelta(days=config.DIAS_RETROATIVOS)
-
-        # Status = Inadimplente (pode ser <select> ou lista personalizada)
-        status = achar(
-            page, lambda f: f.locator("select").filter(has_text="Inadimplente"), tempo=5,
-            obrigatorio=False,
-        )
-        if status is not None:
-            status.select_option(label="Inadimplente")
-        else:
-            try:
-                rotulo = achar(page, lambda f: f.get_by_text("Status", exact=True), tempo=5)
-                rotulo.locator("xpath=following::*[self::select or @role='combobox' or contains(@class,'select')][1]").click()
-                clicar_texto(page, "Inadimplente", exato=True)
-            except Exception:
-                pass  # em geral já vem "Inadimplente" selecionado
-
-        # Datas de vencimento (dois campos dd/mm/aaaa: "Vencimento" e "Até")
-        datas = achar_todos(
-            page,
-            lambda f: f.locator(
-                "input[placeholder*='dd/mm' i]:visible, input[placeholder*='aaaa' i]:visible"
-            ),
-            tempo=20,
-        )
-        for campo, valor in ((datas.nth(0), inicio), (datas.nth(1), hoje)):
-            campo.click()
-            campo.fill("")
-            campo.type(f"{valor:%d/%m/%Y}", delay=60)
-            campo.press("Tab")
+            if "/private/" in page.url:
+                return  # já está logado
+            raise
+        page.locator("input[name=username]").fill(usuario)
+        campo_senha.fill(senha)
+        page.get_by_role("button", name="Iniciar sessão").click()
+        try:
+            page.wait_for_url(re.compile(r"/private/"), timeout=60_000)
+        except Exception:
+            raise RuntimeError("Login na Allianz falhou — verifique usuário/senha no .env")
+        esperar_carregar(page, 2000)
 
     # ---------------------------------------------------------- conversão
     def normalizar(self, arquivo: Path) -> pd.DataFrame:

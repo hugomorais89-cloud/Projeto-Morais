@@ -6,7 +6,9 @@ Cada seguradora é uma classe com dois passos:
 """
 from __future__ import annotations
 
+import io
 import re
+import warnings
 import unicodedata
 from datetime import date
 from pathlib import Path
@@ -62,19 +64,25 @@ def ler_tabela(arquivo: Path) -> pd.DataFrame:
     if arquivo.suffix.lower() in (".xlsx", ".xls", ".xlsm"):
         df = pd.read_excel(arquivo, dtype=str)
     else:
-        ultimo_erro = None
-        for enc in ("utf-8-sig", "latin-1"):
-            try:
-                df = pd.read_csv(
-                    arquivo, sep=None, engine="python", dtype=str, encoding=enc
-                )
-                break
-            except UnicodeDecodeError as e:
-                ultimo_erro = e
-        else:
-            raise ultimo_erro
+        bruto = arquivo.read_bytes()
+        try:
+            conteudo = bruto.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            conteudo = bruto.decode("latin-1")
+        linhas = conteudo.splitlines()
+        while linhas and not linhas[0].strip():  # ignora linhas em branco no topo
+            linhas.pop(0)
+        cabecalho = linhas[0] if linhas else ""
+        sep = max((";", ",", "\t", "|"), key=cabecalho.count)
+        with warnings.catch_warnings():  # linhas com ";" sobrando no fim
+            warnings.simplefilter("ignore")
+            df = pd.read_csv(io.StringIO("\n".join(linhas)), sep=sep, dtype=str,
+                             keep_default_na=False, index_col=False)
+        # Excel-CSV usa ="123" para preservar zeros à esquerda (ex.: CPF)
+        df = df.apply(lambda col: col.astype(str).str.replace(r'^="?(.*?)"?$', r"\1", regex=True))
     df.columns = [chave(c) for c in df.columns]
-    return df.dropna(how="all")
+    df = df.loc[:, [c for c in df.columns if c and not c.startswith("UNNAMED")]]
+    return df.replace("", pd.NA).dropna(how="all")
 
 
 def achar_coluna(df: pd.DataFrame, *candidatos: str) -> str | None:

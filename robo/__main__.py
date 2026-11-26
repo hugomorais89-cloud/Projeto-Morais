@@ -57,7 +57,8 @@ def main(argv=None) -> int:
     if precisa_navegador:
         from playwright.sync_api import sync_playwright
         pw = sync_playwright().start()
-        navegador = pw.chromium.launch(headless=config.NAVEGADOR_OCULTO)
+        navegador = pw.chromium.launch(headless=config.NAVEGADOR_OCULTO,
+                                           executable_path=config.CHROMIUM_EXECUTAVEL)
 
     try:
         for chave in escolhidas:

@@ -16,6 +16,8 @@ for _p in (PASTA_DOWNLOADS, PASTA_SAIDAS, PASTA_LOGS):
 
 DIAS_RETROATIVOS = int(os.getenv("DIAS_RETROATIVOS", "90"))
 NAVEGADOR_OCULTO = os.getenv("NAVEGADOR_OCULTO", "true").strip().lower() != "false"
+# Opcional: caminho de um Chrome/Chromium já instalado (em branco = o do Playwright)
+CHROMIUM_EXECUTAVEL = os.getenv("CHROMIUM_EXECUTAVEL", "").strip() or None
 
 
 def credencial(prefixo: str) -> tuple[str, str]:
