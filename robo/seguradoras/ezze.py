@@ -7,7 +7,8 @@ Caminho no portal (conforme vídeo da equipe):
   portal.ezzeseguros.com.br/Portal/Landing > ACESSAR > login > página inicial
   > seção "Minha gestão" > card "Parcelas em atraso" > Download (Parcelas_Atraso.xlsx)
 
-⚠ Ainda não testado no portal real (o site recusa conexões de fora do Brasil).
+Testado no portal real em 26/11/2026. O login só funciona depois de aceitar
+  o aviso de cookies essenciais (barra no rodapé).
   O layout da planilha é lido de forma flexível; se alguma coluna não for
   reconhecida o robô avisa no log quais colunas encontrou.
 """
@@ -48,6 +49,7 @@ class Ezze(Seguradora):
         acessar = page.get_by_text(re.compile(r"^\s*acessar\s*$", re.I)).first
         if acessar.count():
             acessar.click()
+        self._aceitar_cookies(page)
         login_generico(page, usuario, senha, botao=r"entrar")
         try:
             page.wait_for_url(re.compile(r"PortalCorretor", re.I), timeout=LIMITE)
@@ -68,6 +70,26 @@ class Ezze(Seguradora):
         destino = config.PASTA_DOWNLOADS / f"ezze_{date.today():%Y-%m-%d}{extensao}"
         download.save_as(destino)
         return destino
+
+    @staticmethod
+    def _aceitar_cookies(page) -> None:
+        """O login só funciona depois de aceitar o termo de cookies (barra no rodapé)."""
+        aceitar = page.get_by_role("button", name=re.compile(r"^\s*aceitar\s*$", re.I)).or_(
+            page.get_by_text(re.compile(r"^\s*aceitar\s*$", re.I))).first
+        try:
+            aceitar.wait_for(state="visible", timeout=20_000)
+            aceitar.click()
+            log.info("Termo de cookies aceito")
+            page.wait_for_timeout(1000)
+        except Exception:
+            log.info("Aviso de cookies não apareceu (já aceito)")
+        # Pop-up "Por favor aceite a política de cookies" pode ter ficado aberto
+        ok = page.get_by_role("button", name=re.compile(r"^\s*ok\s*$", re.I)).first
+        try:
+            if ok.is_visible():
+                ok.click()
+        except Exception:
+            pass
 
     def normalizar(self, arquivo: Path) -> pd.DataFrame:
         df = ler_tabela(arquivo, cabecalho_com=("Apólice", "Apolice", "Segurado", "Parcela"))

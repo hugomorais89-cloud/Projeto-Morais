@@ -11,8 +11,11 @@ Colunas da tela: Documento/Parcela ("01.053.139.002620.000000 - 05 de 10"), Venc
   Data Prev. Receb., Forma de Pagamento — e abaixo de cada linha
   "Cobertura Proporcional até: dd/mm/aaaa".
 
-⚠ Ainda não testado no portal real (o site bloqueia este acesso automatizado
-  de fora do Brasil). Testar no computador do escritório.
+Testado no portal real em 26/11/2026:
+  - o portal recusa períodos maiores que 30 dias (alerta "Período não pode ser
+    superior a 30 dias") → busca sempre os últimos 30 dias;
+  - a tela fica no iframe dsp_parcelas_busca_2008.htm e o resultado em
+    dsp_parcelas_view_2008.htm; nesta versão não há a linha "Cobertura Proporcional".
 """
 from __future__ import annotations
 
@@ -39,6 +42,7 @@ from .base import (
 log = logging.getLogger("robo")
 URL = "https://www.hdi.com.br/hdidigital"
 LIMITE = 120_000
+PERIODO_DIAS = 30  # limite do portal: "Período não pode ser superior a 30 dias"
 RE_DOC = re.compile(r"(\d{2}\.\d{3}\.\d{3}\.\d{6}\.\d{6})\s*-\s*(\d+)\s*de\s*(\d+)")
 RE_COBERTURA = re.compile(r"Cobertura Proporcional at[ée]:?\s*(\d{2}/\d{2}/\d{2,4})", re.I)
 CAMPOS = ["documento", "parcela", "total_parcelas", "vencimento", "limite_vistoria",
@@ -55,20 +59,32 @@ class Hdi(Seguradora):
         page.goto(URL, wait_until="domcontentloaded")
         login_generico(page, usuario, senha, botao=r"entrar")
         try:
-            page.get_by_text("Parcela", exact=True).first.wait_for(timeout=LIMITE)
+            # Há vários "Parcela" escondidos na página; espera pelo item visível do menu
+            achar(page, lambda f: f.get_by_text("Parcela", exact=True), tempo=LIMITE / 1000)
         except Exception:
             raise RuntimeError("Login na HDI falhou — verifique usuário/senha no .env")
         esperar_carregar(page, 2000)
 
-        log.info("Menu Parcela")
+        # Alertas do portal (ex.: "Período não pode ser superior a 30 dias") vão para o log
+        self._alertas: list[str] = []
+
+        def _alerta(d):
+            self._alertas.append(d.message)
+            log.warning("HDI — alerta do portal: %s", d.message)
+            d.dismiss()
+        page.on("dialog", _alerta)
+
+        # O portal só aceita período de até 30 dias: busca os últimos 30 dias até hoje
+        # (independe de DIAS_RETROATIVOS)
+        hoje = date.today()
+        inicio = hoje - timedelta(days=PERIODO_DIAS - 1)
+        log.info("Menu Parcela — vencimento de %s a %s", f"{inicio:%d/%m/%Y}", f"{hoje:%d/%m/%Y}")
         clicar_texto(page, "Parcela", exato=True, tempo=60)
+        page.wait_for_timeout(2000)
         datas = achar_todos(
             page, lambda f: f.locator("xpath=//*[contains(., 'PERÍODO DE VENCIMENTO') or "
                                       "contains(., 'Período de Vencimento')]/following::input[@type='text'][position()<=2]"),
             tempo=90)
-        hoje = date.today()
-        inicio = hoje - timedelta(days=config.DIAS_RETROATIVOS)
-        log.info("Período de vencimento: %s a %s", f"{inicio:%d/%m/%Y}", f"{hoje:%d/%m/%Y}")
         for i, valor in ((0, inicio), (1, hoje)):
             campo = datas.nth(i)
             campo.click()
@@ -84,9 +100,14 @@ class Hdi(Seguradora):
         log.info("Tipos de parcela disponíveis: %s", opcoes)
         tipo.select_option(label=next(o for o in opcoes if re.search("atrasad", o, re.I)))
 
-        clicar_texto(page, "BUSCAR", exato=True, tempo=30)
+        # BUSCAR é um <button onclick="validacoes()"> dentro do iframe dsp_parcelas_busca
+        buscar = achar(page, lambda f: f.get_by_role(
+            "button", name=re.compile(r"^\s*buscar\s*$", re.I)), tempo=30)
+        buscar.click()
         page.wait_for_timeout(5000)
         esperar_carregar(page, 3000)
+        if self._alertas:
+            raise RuntimeError(f"HDI recusou a busca: {self._alertas[-1]}")
 
         linhas = self._ler_resultados(page)
         destino = config.PASTA_DOWNLOADS / f"hdi_{hoje:%Y-%m-%d}.csv"
@@ -102,7 +123,10 @@ class Hdi(Seguradora):
         vistas: dict[tuple, dict] = {}
         pagina = 1
         while True:
-            achar(page, lambda f: f.get_by_text(RE_DOC), tempo=90)
+            if achar(page, lambda f: f.get_by_text(RE_DOC), tempo=90, obrigatorio=False) is None:
+                if pagina == 1:
+                    log.warning("HDI: nenhuma parcela atrasada apareceu na tela")
+                break
             for frame in page.frames:
                 try:
                     trs = frame.locator("tr").all()

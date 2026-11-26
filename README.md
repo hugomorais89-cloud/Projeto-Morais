@@ -10,13 +10,18 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
 |---|---|---|
 | Allianz (AllianzNet) | Gestão de Inadimplentes → Gerar Planilha (CSV) | ✅ testada no portal real |
 | Tokio Marine (Portal Parceiros) | corretora **32904** → Clientes inadimplentes → todos os ramos → EXCEL | ✅ testada no portal real |
-| EZZE | Minha gestão → Parcelas em atraso → Download | ⚠ falta testar no escritório |
-| HDI (HDI Digital) | Parcela → período de vencimento → Buscar → lê a tabela da tela (não há Excel) | ⚠ falta testar no escritório |
-| Yelum / Aliro | Gestão de Parcelas → "Atrasadas" + "A Vencer" com vencimento original já passado → Exportar Excel | ⚠ falta testar no escritório |
+| EZZE | aceita o aviso de cookies → Minha gestão → Parcelas em atraso → Download | ✅ testada no portal real |
+| HDI (HDI Digital) | Parcela → vencimento dos **últimos 30 dias** → Tipo **ATRASADAS** → Buscar → lê a tabela da tela (não há Excel) | ✅ testada no portal real |
+| Yelum / Aliro | Gestão de Parcelas (aceita o termo LGPD) → "Atrasadas" (até ontem) + "A Vencer" com vencimento original já passado → Exportar Excel | ✅ testada no portal real |
 
 EZZE, HDI e Yelum bloqueiam acessos de fora do Brasil / automatizados vindos de servidores,
-por isso o primeiro teste delas precisa ser no computador do escritório
-(com `NAVEGADOR_OCULTO=false` para acompanhar na tela).
+por isso o robô precisa rodar no computador do escritório.
+
+Particularidades dos portais (já tratadas pelo robô):
+- **HDI**: o portal não aceita período maior que 30 dias, por isso a HDI busca só os últimos 30 dias
+  (não usa `DIAS_RETROATIVOS`).
+- **Yelum**: no filtro "Atrasadas" as datas precisam ser menores que hoje (a busca vai até ontem).
+- **EZZE**: o login só funciona depois de aceitar o aviso de cookies essenciais.
 
 Como o portal da Yelum traz as duas marcas, a coluna SEGURADORA sai como **YELUM** ou **ALIRO**
 conforme o produto. Formas de pagamento são padronizadas para CARTÃO / DÉBITO / PIX / BOLETO.
@@ -77,6 +82,10 @@ O histórico fica em `dados/inadimplencia.db` (não vai para o GitHub).
   `executar.bat --arquivo allianz=C:\Users\...\Downloads\GESTAO_DE_INADIMPLENTES.csv`
 
 Quando dá erro, o robô salva um **print da tela** e um **log** na pasta `logs\`, e a aba *Resumo* mostra quais seguradoras falharam.
+
+Se aparecer o erro `BrowserType.launch: spawn UNKNOWN` (o Chromium baixado pelo `instalar.bat`
+veio incompleto — o antivírus costuma bloquear), use o Google Chrome do computador:
+`CHROMIUM_EXECUTAVEL=C:\Program Files\Google\Chrome\Application\chrome.exe` no `.env`.
 
 ## Rodar sozinho todo dia (Agendador de Tarefas do Windows)
 
