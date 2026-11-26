@@ -21,6 +21,9 @@ Particularidades dos portais (já tratadas pelo robô):
 - **HDI**: o portal não aceita período maior que 30 dias, por isso a HDI busca só os últimos 30 dias
   (não usa `DIAS_RETROATIVOS`).
 - **Yelum**: no filtro "Atrasadas" as datas precisam ser menores que hoje (a busca vai até ontem).
+  Do filtro "A Vencer" só entram parcelas **PIX ou BOLETO** com vencimento original já passado
+  (ficaram em aberto e a seguradora reprogramou). Nelas, VENCIMENTO é o vencimento original
+  (conta os dias em atraso) e **DATA LIMITE** é o vencimento reprogramado (prazo para pagamento).
 - **EZZE**: o login só funciona depois de aceitar o aviso de cookies essenciais.
 
 Como o portal da Yelum traz as duas marcas, a coluna SEGURADORA sai como **YELUM** ou **ALIRO**

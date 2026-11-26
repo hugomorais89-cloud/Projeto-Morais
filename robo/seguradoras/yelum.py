@@ -4,8 +4,10 @@ Caminho no portal (conforme vídeo da equipe):
   login > Financeiro > Gestão de Parcelas > aceitar "Termo de adesão" (LGPD)
   1) filtro "Atrasadas", vencimento de <90 dias atrás> até <hoje> > Buscar > Exportar Excel
   2) filtro "A Vencer", de <hoje> até <+30 dias> > Buscar > Exportar Excel
-     → a equipe aproveita só as parcelas "A Vencer" cujo VENCIMENTO ORIGINAL já passou
-       (foram reprogramadas, mas continuam pendentes).
+     → a equipe aproveita só as parcelas "A Vencer" com forma de pagamento PIX ou BOLETO
+       cujo VENCIMENTO ORIGINAL já passou: ficaram em aberto e a seguradora reprogramou
+       para PIX/boleto. VENCIMENTO = vencimento original (conta os dias em atraso) e
+       DATA LIMITE = vencimento reprogramado (prazo limite para pagamento).
 
 Colunas do Excel: Apólice, Emissão, Nome, Produto, Parcela, VencimentoAtual, Valor,
   Tipo, Status, VencimentoOriginal, IOF, MotivoRejeicao, DataRejeicao, NomeCorretora
@@ -168,12 +170,19 @@ class Yelum(Seguradora):
             if not texto(v(l, "apolice")):
                 continue
             original = para_data(v(l, "venc_original")) or para_data(v(l, "venc_atual"))
-            if so_vencidas and not (original and original < hoje):
-                continue
+            atual = para_data(v(l, "venc_atual"))
+            pagamento = forma_pagamento(v(l, "tipo"))
+            limite = None
+            if so_vencidas:
+                # "A Vencer": só entram parcelas que ficaram em aberto e a seguradora
+                # reprogramou para PIX ou BOLETO (vencimento original já passou).
+                # O vencimento reprogramado é o prazo limite para pagamento.
+                if not (original and original < hoje) or pagamento not in ("PIX", "BOLETO"):
+                    continue
+                limite = atual
             produto = texto(v(l, "produto")).upper()
             status = texto(v(l, "status"))
             motivo = texto(v(l, "motivo")).strip(" -")
-            atual = para_data(v(l, "venc_atual"))
             if original and original < hoje and re.search(r"a vencer", status, re.I):
                 # parcela "A Vencer" no portal, mas com o vencimento original já passado
                 status = f"{status} (venc. original passou" + (
@@ -186,7 +195,8 @@ class Yelum(Seguradora):
                 "PARCELA": texto(v(l, "parcela")),
                 "VENCIMENTO": original,
                 "VALOR": para_numero(v(l, "valor")),
-                "PAGAMENTO": forma_pagamento(v(l, "tipo")),
+                "PAGAMENTO": pagamento,
+                "DATA LIMITE": limite,
                 "SITUAÇÃO": f"{status} — {motivo}" if motivo else status,
             })
         return linhas
