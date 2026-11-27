@@ -2,8 +2,11 @@
 from .allianz import Allianz
 from .ezze import Ezze
 from .hdi import Hdi
+from .mapfre import Mapfre
+from .suhai import Suhai
 from .tokio import TokioMarine
 from .yelum import Yelum
+from .zurich import Zurich
 
 SEGURADORAS = {
     "allianz": Allianz,
@@ -11,4 +14,7 @@ SEGURADORAS = {
     "ezze": Ezze,
     "hdi": Hdi,
     "yelum": Yelum,
+    "mapfre": Mapfre,
+    "suhai": Suhai,
+    "zurich": Zurich,
 }

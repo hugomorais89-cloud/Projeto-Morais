@@ -13,6 +13,9 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
 | EZZE | aceita o aviso de cookies → Minha gestão → Parcelas em atraso → Download | ✅ testada no portal real |
 | HDI (HDI Digital) | Parcela → vencimento dos **últimos 30 dias** → Tipo **ATRASADAS** → Buscar → lê a tabela da tela (não há Excel) | ✅ testada no portal real |
 | Yelum / Aliro | Gestão de Parcelas (aceita o termo LGPD) → "Atrasadas" (até ontem) + "A Vencer" com vencimento original já passado → Exportar Excel | ✅ testada no portal real |
+| MAPFRE (MAPFRE Negócios) | código interno TODOS → Parcelas dos Clientes → "Vencida" (últimos 30 dias) + "A vencer" reprogramadas (hoje até +14 dias) → exportar CSV | ✅ testada no portal real |
+| Suhai (i4pro) | Relatórios → Impressão de 2ª Via → "Parcelas Pendentes Corretor" → Exportar Excel (XLSX) | ✅ testada no portal real |
+| Zurich (Espaço Parceiros) | Parcelas vencidas (últimos 30 dias) → Buscar → Exportar XLS (descarta as já pagas) | ✅ testada no portal real |
 
 EZZE, HDI e Yelum bloqueiam acessos de fora do Brasil / automatizados vindos de servidores,
 por isso o robô precisa rodar no computador do escritório.
@@ -25,6 +28,11 @@ Particularidades dos portais (já tratadas pelo robô):
   (ficaram em aberto e a seguradora reprogramou). Nelas, VENCIMENTO é o vencimento original
   (conta os dias em atraso) e **DATA LIMITE** é o vencimento reprogramado (prazo para pagamento).
 - **EZZE**: o login só funciona depois de aceitar o aviso de cookies essenciais.
+- **MAPFRE**: fecha o aviso "Informação de proteção de dados" (só informativo) e escolhe o código
+  interno TODOS. Das reprogramadas entram todas; VENCIMENTO = vencimento original e
+  DATA LIMITE = vencimento reprogramado.
+- **Suhai**: o login precisa da página totalmente carregada (senão dá "Sessão inválida").
+- **Zurich**: o "XLS" exportado é na verdade uma tabela HTML; parcelas "Pago"/"Aprovado" são descartadas.
 
 Como o portal da Yelum traz as duas marcas, a coluna SEGURADORA sai como **YELUM** ou **ALIRO**
 conforme o produto. Formas de pagamento são padronizadas para CARTÃO / DÉBITO / PIX / BOLETO.

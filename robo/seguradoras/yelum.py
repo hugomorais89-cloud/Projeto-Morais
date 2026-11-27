@@ -82,9 +82,20 @@ class Yelum(Seguradora):
         # Em "Atrasadas" o portal exige datas menores que hoje → termina ontem
         atrasadas = self._exportar(page, "Atrasadas", hoje - timedelta(days=config.DIAS_RETROATIVOS),
                                    hoje - timedelta(days=1), f"yelum_atrasadas_{hoje:%Y-%m-%d}.xlsx")
+        nome_avencer = f"yelum_avencer_{hoje:%Y-%m-%d}.xlsx"
         try:
-            self._exportar(page, "A Vencer", hoje, hoje + timedelta(days=DIAS_A_VENCER),
-                           f"yelum_avencer_{hoje:%Y-%m-%d}.xlsx")
+            try:
+                self._exportar(page, "A Vencer", hoje, hoje + timedelta(days=DIAS_A_VENCER),
+                               nome_avencer)
+            except RuntimeError as e:
+                # À noite o servidor da Yelum já está no dia seguinte (UTC) e recusa
+                # "data inicial deverá ser igual ou maior que hoje": tenta a partir de amanhã
+                if "maior que hoje" not in str(e):
+                    raise
+                log.info("Yelum: servidor já está no dia seguinte — A Vencer a partir de amanhã")
+                amanha = hoje + timedelta(days=1)
+                self._exportar(page, "A Vencer", amanha, amanha + timedelta(days=DIAS_A_VENCER),
+                               nome_avencer)
         except Exception:
             log.warning("Não foi possível exportar 'A Vencer' — seguindo só com 'Atrasadas'",
                         exc_info=True)
@@ -116,17 +127,28 @@ class Yelum(Seguradora):
             campo.click()
             campo.fill(f"{valor:%d/%m/%Y}")
             campo.press("Escape")
-        page.get_by_role("button", name=re.compile(r"^\s*buscar\s*$", re.I)).click()
-        page.wait_for_timeout(3000)
-        esperar_carregar(page, 2000)
+        # O portal às vezes demora (ou ignora o 1º clique): busca até 3 vezes, 90 s cada
+        buscar = page.get_by_role("button", name=re.compile(r"^\s*buscar\s*$", re.I))
         botao = page.get_by_role("button", name=re.compile("Exportar Excel", re.I)).first
-        limite = time.monotonic() + 90
-        while not botao.is_enabled():
-            if time.monotonic() > limite:
-                msg = page.locator("xpath=//*[contains(., 'Resultado da busca')]/following-sibling::*[1]")
-                aviso = msg.first.inner_text(timeout=2000).strip() if msg.count() else ""
-                raise RuntimeError(f"Yelum ({filtro}): Exportar Excel não liberou. Portal: {aviso!r}")
-            page.wait_for_timeout(1000)
+        for tentativa in range(1, 4):
+            buscar.click()
+            page.wait_for_timeout(3000)
+            esperar_carregar(page, 2000)
+            limite = time.monotonic() + 90
+            while not botao.is_enabled() and time.monotonic() < limite:
+                page.wait_for_timeout(1000)
+            if botao.is_enabled():
+                break
+            corpo = page.locator("body").inner_text()
+            if "maior que hoje" in corpo or "menor que hoje" in corpo:
+                # erro de data do portal: repetir a mesma busca não adianta
+                raise RuntimeError(f"Yelum ({filtro}): portal recusou as datas — "
+                                   f"{corpo.split('Resultado da busca', 1)[-1].strip()[:150]!r}")
+            log.warning("Yelum (%s): Exportar Excel não liberou (tentativa %d de 3)", filtro, tentativa)
+        else:
+            corpo = page.locator("body").inner_text()
+            aviso = corpo.split("Resultado da busca", 1)[-1].strip()[:150] if "Resultado da busca" in corpo else ""
+            raise RuntimeError(f"Yelum ({filtro}): Exportar Excel não liberou. Portal: {aviso!r}")
         with page.expect_download(timeout=LIMITE) as info:
             botao.click()
         destino = config.PASTA_DOWNLOADS / nome_arquivo

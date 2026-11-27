@@ -72,7 +72,9 @@ def ler_tabela(arquivo: Path, cabecalho_com: tuple[str, ...] = ()) -> pd.DataFra
     relatórios que trazem linhas de resumo antes da tabela (ex.: Tokio Marine).
     """
     arquivo = Path(arquivo)
-    if arquivo.suffix.lower() in (".xlsx", ".xls", ".xlsm"):
+    if _eh_html(arquivo):  # ex.: Zurich exporta uma tabela HTML com extensão .xls
+        df = _ler_html(arquivo, cabecalho_com)
+    elif arquivo.suffix.lower() in (".xlsx", ".xls", ".xlsm"):
         if cabecalho_com:
             bruto = pd.read_excel(arquivo, dtype=str, header=None)
             alvo = {chave(c) for c in cabecalho_com}
@@ -107,6 +109,56 @@ def ler_tabela(arquivo: Path, cabecalho_com: tuple[str, ...] = ()) -> pd.DataFra
     return df.replace("", pd.NA).dropna(how="all")
 
 
+def _eh_html(arquivo: Path) -> bool:
+    inicio = arquivo.read_bytes()[:2048].lstrip().lower()
+    return inicio.startswith(b"<") and b"<table" in arquivo.read_bytes()[:20000].lower()
+
+
+def _ler_html(arquivo: Path, cabecalho_com: tuple[str, ...]) -> pd.DataFrame:
+    """Lê a 1ª tabela de um arquivo HTML (só biblioteca padrão, sem lxml)."""
+    from html.parser import HTMLParser
+
+    class _Tabela(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.linhas, self._linha, self._celula = [], None, None
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "tr":
+                self._linha = []
+            elif tag in ("td", "th") and self._linha is not None:
+                self._celula = []
+
+        def handle_endtag(self, tag):
+            if tag in ("td", "th") and self._celula is not None:
+                self._linha.append(" ".join("".join(self._celula).split()))
+                self._celula = None
+            elif tag == "tr" and self._linha is not None:
+                if any(self._linha):
+                    self.linhas.append(self._linha)
+                self._linha = None
+
+        def handle_data(self, data):
+            if self._celula is not None:
+                self._celula.append(data)
+
+    bruto = arquivo.read_bytes()
+    try:
+        conteudo = bruto.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        conteudo = bruto.decode("latin-1")
+    p = _Tabela()
+    p.feed(conteudo)
+    linhas = p.linhas
+    i = 0
+    if cabecalho_com:
+        alvo = {chave(c) for c in cabecalho_com}
+        i = next((n for n, l in enumerate(linhas[:40]) if alvo & {chave(v) for v in l}), 0)
+    cab = [c or f"UNNAMED_{j}" for j, c in enumerate(linhas[i])] if linhas else []
+    corpo = [l + [""] * (len(cab) - len(l)) for l in linhas[i + 1:]]
+    return pd.DataFrame([l[:len(cab)] for l in corpo], columns=cab, dtype=str)
+
+
 def achar_coluna(df: pd.DataFrame, *candidatos: str) -> str | None:
     """Procura a 1ª coluna cujo nome começa com algum dos candidatos."""
     for cand in candidatos:
@@ -129,8 +181,14 @@ def para_numero(valor) -> float | None:
         return None
     if "," in s and "." in s:
         s = s.replace(".", "").replace(",", ".")
+    elif s.count(",") > 1:  # '1,082,80' (Zurich): a última vírgula é a decimal
+        inteiro, _, dec = s.rpartition(",")
+        s = inteiro.replace(",", "") + "." + dec
     elif "," in s:
         s = s.replace(",", ".")
+    elif s.count(".") > 1:  # '1.082.80'
+        inteiro, _, dec = s.rpartition(".")
+        s = inteiro.replace(".", "") + "." + dec
     try:
         return round(float(s), 2)
     except ValueError:
