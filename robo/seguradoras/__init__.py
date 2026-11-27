@@ -1,4 +1,5 @@
 """Lista de seguradoras ativas. Para incluir uma nova, crie o módulo e registre aqui."""
+from .akad import Akad
 from .allianz import Allianz
 from .bradesco import Bradesco
 from .ezze import Ezze
@@ -21,4 +22,5 @@ SEGURADORAS = {
     "zurich": Zurich,
     "bradesco": Bradesco,
     "novo": Novo,
+    "akad": Akad,
 }
