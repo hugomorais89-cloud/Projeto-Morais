@@ -5,7 +5,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 RAIZ = Path(__file__).resolve().parent.parent
-load_dotenv(RAIZ / ".env")
+# override: o .env sempre vale (o painel repassa ao robô o ambiente carregado na abertura;
+# sem isso, senhas trocadas depois de abrir o painel seriam ignoradas)
+load_dotenv(RAIZ / ".env", override=True)
 
 PASTA_DOWNLOADS = RAIZ / "downloads"
 PASTA_SAIDAS = RAIZ / "saidas"
