@@ -335,9 +335,8 @@ function mostrarRobo(r) {
   btn.textContent = r.rodando ? (r.alvo ? `Reprocessando ${r.alvo}…` : "Robô em execução…") : "Atualizar agora";
   document.querySelectorAll("button.reproc").forEach(b => b.disabled = r.rodando);
   if (mudou && r.rodando) carregarPainel();
-  // log só aparece enquanto o robô está rodando; ao terminar some (o resultado fica nos cards)
-  if (r.rodando) { log.style.display = "block"; log.textContent = r.log || "Iniciando…"; log.scrollTop = log.scrollHeight; }
-  else log.style.display = "none";
+  // o log do robô não aparece no painel (fica em logs\); o andamento é mostrado nos botões e cards
+  log.style.display = "none";
   if (r.rodando && !acompanhando) acompanhando = setInterval(acompanhar, 3000);
 }
 async function acompanhar() {
