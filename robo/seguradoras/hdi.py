@@ -81,10 +81,22 @@ class Hdi(Seguradora):
         log.info("Menu Parcela — vencimento de %s a %s", f"{inicio:%d/%m/%Y}", f"{hoje:%d/%m/%Y}")
         clicar_texto(page, "Parcela", exato=True, tempo=60)
         page.wait_for_timeout(2000)
-        datas = achar_todos(
-            page, lambda f: f.locator("xpath=//*[contains(., 'PERÍODO DE VENCIMENTO') or "
-                                      "contains(., 'Período de Vencimento')]/following::input[@type='text'][position()<=2]"),
-            tempo=90)
+        try:
+            datas = achar_todos(
+                page, lambda f: f.locator("xpath=//*[contains(., 'PERÍODO DE VENCIMENTO') or "
+                                          "contains(., 'Período de Vencimento')]/following::input[@type='text'][position()<=2]"),
+                tempo=90)
+        except TimeoutError:
+            # O firewall da HDI (Akamai) às vezes devolve "Access Denied" dentro da tela Parcela
+            def _negado(f):
+                try:
+                    return "Access Denied" in (f.content() or "")
+                except Exception:
+                    return False
+            if any(_negado(f) for f in page.frames):
+                raise RuntimeError("Portal da HDI bloqueou o acesso à tela Parcela (Access Denied) — "
+                                   "instabilidade do site; tentar novamente mais tarde") from None
+            raise
         for i, valor in ((0, inicio), (1, hoje)):
             campo = datas.nth(i)
             campo.click()
