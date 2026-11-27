@@ -92,12 +92,14 @@ def api_painel():
         ultima_exec = con.execute("SELECT * FROM execucoes ORDER BY id DESC LIMIT 1").fetchone()
 
     por_dia = {(h["seguradora"], h["data"]): dict(h) for h in hist}
+    chaves = {cls.nome: chave for chave, cls in SEGURADORAS.items()}
     seguradoras = []
     for nome in nomes:
         hoje_info = por_dia.get((nome, hoje.isoformat()))
         ok = ultimas_ok.get(nome)
         seguradoras.append({
             "nome": nome,
+            "chave": chaves.get(nome),
             "hoje": hoje_info,
             "ultima_ok": ok["horario"] if ok else None,
             "historico": [(por_dia.get((nome, d)) or {}).get("situacao") for d in dias],
@@ -172,7 +174,7 @@ def api_parcelas():
 
 
 # ----------------------------------------------------- rodar o robô pelo site
-_robo = {"processo": None, "inicio": None, "log": ""}
+_robo = {"processo": None, "inicio": None, "log": "", "alvo": None}
 _trava = threading.Lock()
 
 
@@ -182,6 +184,7 @@ def _estado_robo() -> dict:
     return {
         "rodando": rodando,
         "inicio": _robo["inicio"],
+        "alvo": _robo["alvo"],
         "codigo_saida": None if p is None or rodando else p.returncode,
         "log": _robo["log"][-3000:],
     }
@@ -192,19 +195,32 @@ def _acompanhar(p):
         _robo["log"] += linha
 
 
-@app.post("/api/executar")
-@exige_login
-def api_executar():
+def _iniciar(argumentos: list[str], alvo: str | None = None):
     with _trava:
         if _estado_robo()["rodando"]:
             return jsonify({"ok": False, "mensagem": "O robô já está em execução."}), 409
         p = subprocess.Popen(
-            [sys.executable, "-m", "robo"], cwd=config.RAIZ, text=True, encoding="utf-8",
-            errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            [sys.executable, "-m", "robo", *argumentos], cwd=config.RAIZ, text=True,
+            encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         )
-        _robo.update(processo=p, inicio=datetime.now().isoformat(" ", "seconds"), log="")
+        _robo.update(processo=p, inicio=datetime.now().isoformat(" ", "seconds"), log="", alvo=alvo)
         threading.Thread(target=_acompanhar, args=(p,), daemon=True).start()
     return jsonify({"ok": True})
+
+
+@app.post("/api/executar")
+@exige_login
+def api_executar():
+    return _iniciar([])
+
+
+@app.post("/api/reprocessar/<chave>")
+@exige_login
+def api_reprocessar(chave: str):
+    """Nova tentativa só para uma seguradora (botão no card de quem deu erro hoje)."""
+    if chave not in SEGURADORAS:
+        return jsonify({"ok": False, "mensagem": "Seguradora desconhecida."}), 404
+    return _iniciar(["--reprocessar", chave], alvo=SEGURADORAS[chave].nome)
 
 
 @app.get("/api/executar")

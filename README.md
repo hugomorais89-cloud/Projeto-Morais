@@ -61,6 +61,9 @@ Um site para acompanhar tudo num lugar só, aberto pelo navegador:
 - **Parcelas em aberto** com filtros: busca por nome/CPF/recibo, seguradora, ramo, **risco de cancelamento**, "cancela em até X dias" e "atraso mínimo". Dá para ordenar por qualquer coluna e exportar o resultado para o Excel.
 - **Saíram da lista**: parcelas que estavam na extração anterior e sumiram (provavelmente pagas).
 - Botão **Atualizar agora**, que roda o robô na hora.
+- Botão **↻ Reprocessar** no card de uma seguradora que deu erro hoje: tenta de novo só ela.
+  As demais entram na planilha do dia com os arquivos já baixados (equivale a
+  `executar.bat --reprocessar hdi`).
 
 Classificação de risco (pela data prevista de cancelamento informada pela seguradora):
 

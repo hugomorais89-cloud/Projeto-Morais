@@ -75,6 +75,17 @@ def conectar():
         con.close()
 
 
+def arquivos_ok_do_dia(dia: str) -> dict[str, str]:
+    """{nome_seguradora: nome do arquivo baixado} da última extração OK de cada seguradora no dia."""
+    with conectar() as con:
+        linhas = con.execute("""
+            SELECT e.seguradora, e.detalhe FROM extracoes e
+            JOIN (SELECT seguradora, MAX(id) id FROM extracoes
+                  WHERE data=? AND situacao='OK' GROUP BY seguradora) u ON u.id = e.id
+        """, (dia,)).fetchall()
+    return {l["seguradora"]: l["detalhe"] for l in linhas if l["detalhe"]}
+
+
 def _iso(v) -> str | None:
     if v is None or (isinstance(v, float) and pd.isna(v)) or v is pd.NaT:
         return None

@@ -5,6 +5,8 @@ Uso:
   python -m robo allianz               # roda só a Allianz
   python -m robo --arquivo allianz=C:\\caminho\\GESTAO_DE_INADIMPLENTES.csv
                                        # só converte um relatório já baixado
+  python -m robo --reprocessar hdi     # nova tentativa só na HDI (as outras entram na
+                                       # planilha com os arquivos já baixados hoje)
 """
 from __future__ import annotations
 
@@ -38,6 +40,9 @@ def main(argv=None) -> int:
     ap.add_argument("seguradoras", nargs="*", help=f"opções: {', '.join(SEGURADORAS)}")
     ap.add_argument("--arquivo", action="append", default=[], metavar="SEGURADORA=CAMINHO",
                     help="usa um relatório já baixado em vez de acessar o portal")
+    ap.add_argument("--reprocessar", metavar="SEGURADORA",
+                    help="tenta de novo só esta seguradora; as demais entram na planilha com os "
+                         "arquivos já baixados hoje e o histórico grava só a reprocessada")
     args = ap.parse_args(argv)
 
     arq_log = configurar_log()
@@ -46,9 +51,26 @@ def main(argv=None) -> int:
         nome, _, caminho = item.partition("=")
         arquivos_manuais[nome.strip().lower()] = Path(caminho.strip())
 
-    escolhidas = [s.lower() for s in args.seguradoras]
-    escolhidas += [s for s in arquivos_manuais if s not in escolhidas]
-    escolhidas = escolhidas or list(SEGURADORAS)
+    reprocessar = (args.reprocessar or "").strip().lower() or None
+    if reprocessar:
+        if reprocessar not in SEGURADORAS:
+            log.error("Seguradora desconhecida: %s (opções: %s)", reprocessar, list(SEGURADORAS))
+            return 2
+        log.info("Reprocessando só %s", SEGURADORAS[reprocessar].nome)
+        do_dia = banco.arquivos_ok_do_dia(datetime.now().strftime("%Y-%m-%d"))
+        escolhidas = []
+        for chave, cls in SEGURADORAS.items():
+            if chave == reprocessar:
+                escolhidas.append(chave)
+                continue
+            arquivo = config.PASTA_DOWNLOADS / do_dia.get(cls.nome, "")
+            if cls.nome in do_dia and arquivo.is_file():
+                arquivos_manuais[chave] = arquivo
+                escolhidas.append(chave)
+    else:
+        escolhidas = [s.lower() for s in args.seguradoras]
+        escolhidas += [s for s in arquivos_manuais if s not in escolhidas]
+        escolhidas = escolhidas or list(SEGURADORAS)
     desconhecidas = [s for s in escolhidas if s not in SEGURADORAS]
     if desconhecidas:
         log.error("Seguradora desconhecida: %s (opções: %s)", desconhecidas, list(SEGURADORAS))
@@ -104,7 +126,14 @@ def main(argv=None) -> int:
 
     destino = config.PASTA_SAIDAS / f"CONTROLE_INADIMPLENCIA_{datetime.now():%Y-%m-%d}.xlsx"
     gerar_planilha(dados, status, destino)
-    banco.salvar_execucao(inicio, status, dados, origem="manual" if arquivos_manuais else "robo")
+    if reprocessar:
+        # as outras já estão no histórico de hoje: grava só a reprocessada
+        nome = SEGURADORAS[reprocessar].nome
+        banco.salvar_execucao(inicio, [s for s in status if s["seguradora"] == nome],
+                              {nome: dados[nome]} if nome in dados else {}, origem="reprocesso")
+        status = [s for s in status if s["seguradora"] == nome]
+    else:
+        banco.salvar_execucao(inicio, status, dados, origem="manual" if arquivos_manuais else "robo")
     log.info("Histórico gravado em %s", banco.ARQUIVO_BANCO)
     log.info("Planilha consolidada: %s", destino)
     log.info("Log desta execução: %s", arq_log)

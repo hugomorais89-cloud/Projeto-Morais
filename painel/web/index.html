@@ -38,6 +38,9 @@ h2 small{font-weight:400;text-transform:none;letter-spacing:0;color:var(--sub);m
 .selo.ok{background:var(--ok-bg);color:var(--ok)} .selo.erro{background:var(--erro-bg);color:var(--erro)} .selo.pend{background:var(--pend-bg);color:#4a5462}
 .seg .info{color:var(--sub);font-size:12.5px;margin-top:6px}
 .seg .det{color:var(--erro);font-size:12px;margin-top:6px;word-break:break-word}
+.seg button.reproc{margin-top:10px;font-size:12.5px;padding:5px 10px;border:1px solid var(--erro);color:var(--erro);background:#fff;border-radius:6px;cursor:pointer}
+.seg button.reproc:hover:not(:disabled){background:var(--erro-bg)}
+.seg button.reproc:disabled{opacity:.6;cursor:wait}
 .hist{display:flex;gap:3px;margin-top:10px}
 .hist i{width:14px;height:14px;border-radius:3px;background:var(--pend-bg);display:block}
 .hist i.OK{background:var(--ok)} .hist i.ERRO{background:var(--erro)}
@@ -191,10 +194,20 @@ async function carregarPainel() {
       ? `${HORA(h.horario)} · ${h.quantidade} parcelas · ${BRL(h.valor_total)}`
       : s.ultima_ok ? `Último sucesso: ${DATA(s.ultima_ok)} ${HORA(s.ultima_ok)}` : "Nenhuma extração com sucesso ainda";
     const det = h && h.situacao !== "OK" ? `<div class="det">${esc(h.detalhe || "")}</div>` : "";
+    const emCurso = estadoRobo.rodando && estadoRobo.alvo === s.nome;
+    const reproc = h && h.situacao !== "OK" && s.chave
+      ? `<button class="reproc" data-chave="${esc(s.chave)}" data-nome="${esc(s.nome)}" ${estadoRobo.rodando ? "disabled" : ""}>${emCurso ? "Reprocessando…" : "↻ Reprocessar"}</button>` : "";
     const hist = s.historico.map((x,i) => `<i class="${x||""}" title="${DATA(p.dias[i])}: ${x || "não rodou"}"></i>`).join("");
     return `<div class="seg ${cls}"><div class="topo"><span class="nome">${esc(s.nome)}</span><span class="selo ${cls}">${selo}</span></div>
-            <div class="info">${info}</div>${det}<div class="hist">${hist}</div></div>`;
+            <div class="info">${info}</div>${det}${reproc}<div class="hist">${hist}</div></div>`;
   }).join("");
+  document.querySelectorAll("button.reproc").forEach(b => b.onclick = async () => {
+    if (!confirm(`Tentar de novo só a ${b.dataset.nome}? Leva alguns minutos.`)) return;
+    const r = await api(`/api/reprocessar/${encodeURIComponent(b.dataset.chave)}`, {method: "POST"});
+    if (!r.ok) alert(r.mensagem);
+    mostrarRobo(await api("/api/executar"));
+    await carregarPainel();
+  });
   mostrarRobo(p.robo);
 }
 
@@ -313,10 +326,15 @@ function exportarCSV() {
 }
 
 // ---------------------------------------------------------------- rodar robô
-let acompanhando = null;
+let acompanhando = null, estadoRobo = {};
 function mostrarRobo(r) {
   const btn = $("#btn-rodar"), log = $("#log");
-  btn.disabled = r.rodando; btn.textContent = r.rodando ? "Robô em execução…" : "Atualizar agora";
+  const mudou = !!estadoRobo.rodando !== !!r.rodando;
+  estadoRobo = r;
+  btn.disabled = r.rodando;
+  btn.textContent = r.rodando ? (r.alvo ? `Reprocessando ${r.alvo}…` : "Robô em execução…") : "Atualizar agora";
+  document.querySelectorAll("button.reproc").forEach(b => b.disabled = r.rodando);
+  if (mudou && r.rodando) carregarPainel();
   if (r.rodando || r.log) { log.style.display = "block"; log.textContent = r.log || "Iniciando…"; log.scrollTop = log.scrollHeight; }
   if (r.rodando && !acompanhando) acompanhando = setInterval(acompanhar, 3000);
 }
