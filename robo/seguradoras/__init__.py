@@ -1,5 +1,6 @@
 """Lista de seguradoras ativas. Para incluir uma nova, crie o módulo e registre aqui."""
 from .allianz import Allianz
+from .bradesco import Bradesco
 from .ezze import Ezze
 from .hdi import Hdi
 from .mapfre import Mapfre
@@ -17,4 +18,5 @@ SEGURADORAS = {
     "mapfre": Mapfre,
     "suhai": Suhai,
     "zurich": Zurich,
+    "bradesco": Bradesco,
 }
