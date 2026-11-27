@@ -16,6 +16,7 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
 | MAPFRE (MAPFRE Negócios) | código interno TODOS → Parcelas dos Clientes → "Vencida" (últimos 30 dias) + "A vencer" reprogramadas (hoje até +14 dias) → exportar CSV | ✅ testada no portal real |
 | Suhai (i4pro) | Relatórios → Impressão de 2ª Via → "Parcelas Pendentes Corretor" → Exportar Excel (XLSX) | ✅ testada no portal real |
 | Zurich (Espaço Parceiros) | Parcelas vencidas (últimos 30 dias) → Buscar → Exportar XLS (descarta as já pagas) | ✅ testada no portal real |
+| Novo Seguros (Portal do Corretor) | botão "Vencidos" → Exportar para Excel (período de lançamento: últimos **15 dias**, máximo do portal) | ✅ testada no portal real |
 | Bradesco (Portal de Negócios) | AUTO → Parcelas em Atraso → Relatórios → Solicitar relatório (**30 dias**, XLS, somente hoje) → Baixar | ✅ testada no portal real |
 
 EZZE, HDI e Yelum bloqueiam acessos de fora do Brasil / automatizados vindos de servidores,
@@ -39,6 +40,9 @@ Particularidades dos portais (já tratadas pelo robô):
   Recusa os cookies não necessários, clica "Mais tarde" no aviso de senha expirando e fecha o banner.
   O relatório é gerado pelo portal (fila) e baixado quando fica "Finalizado"; vem sem CPF/CNPJ e
   já traz a DATA LIMITE. Por enquanto só o ramo AUTO (é o que o vídeo mostra).
+- **Novo**: a lista "Vencidos" são propostas de renovação com cobrança vencida. VENCIMENTO = vencimento
+  da cobrança e DATA LIMITE = validade da proposta. A exportação só aceita 15 dias de lançamento; se a
+  tela mostrar mais vencidos do que a planilha trouxe, o robô avisa no log.
 
 Regras confirmadas com a equipe em 27/11/2026: MAPFRE mantém todas as reprogramadas; Yelum e MAPFRE
 seguem regras separadas; parcelas que vencem hoje entram (0 dias de atraso); períodos mantidos.

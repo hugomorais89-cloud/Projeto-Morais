@@ -4,6 +4,7 @@ from .bradesco import Bradesco
 from .ezze import Ezze
 from .hdi import Hdi
 from .mapfre import Mapfre
+from .novo import Novo
 from .suhai import Suhai
 from .tokio import TokioMarine
 from .yelum import Yelum
@@ -19,4 +20,5 @@ SEGURADORAS = {
     "suhai": Suhai,
     "zurich": Zurich,
     "bradesco": Bradesco,
+    "novo": Novo,
 }
