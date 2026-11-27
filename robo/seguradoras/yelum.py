@@ -3,7 +3,7 @@
 Caminho no portal (conforme vídeo da equipe):
   login > Financeiro > Gestão de Parcelas > aceitar "Termo de adesão" (LGPD)
   1) filtro "Atrasadas", vencimento de <90 dias atrás> até <hoje> > Buscar > Exportar Excel
-  2) filtro "A Vencer", de <hoje> até <+30 dias> > Buscar > Exportar Excel
+  2) filtro "A Vencer", de <hoje> até <+15 dias> > Buscar > Exportar Excel
      → a equipe aproveita só as parcelas "A Vencer" com forma de pagamento PIX ou BOLETO
        cujo VENCIMENTO ORIGINAL já passou: ficaram em aberto e a seguradora reprogramou
        para PIX/boleto. VENCIMENTO = vencimento original (conta os dias em atraso) e
@@ -45,7 +45,7 @@ log = logging.getLogger("robo")
 URL = "https://novomeuespacocorretor.yelumseguros.com.br/"
 URL_PARCELAS = URL + "lp/payment-management"
 LIMITE = 120_000
-DIAS_A_VENCER = 30
+DIAS_A_VENCER = 15
 
 
 class Yelum(Seguradora):

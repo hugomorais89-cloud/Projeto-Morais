@@ -12,7 +12,7 @@ Entra nos portais das seguradoras, baixa o relatório de parcelas em aberto e ju
 | Tokio Marine (Portal Parceiros) | corretora **32904** → Clientes inadimplentes → todos os ramos → EXCEL | ✅ testada no portal real |
 | EZZE | aceita o aviso de cookies → Minha gestão → Parcelas em atraso → Download | ✅ testada no portal real |
 | HDI (HDI Digital) | Parcela → vencimento dos **últimos 30 dias** → Tipo **ATRASADAS** → Buscar → lê a tabela da tela (não há Excel) | ✅ testada no portal real |
-| Yelum / Aliro | Gestão de Parcelas (aceita o termo LGPD) → "Atrasadas" (até ontem) + "A Vencer" com vencimento original já passado → Exportar Excel | ✅ testada no portal real |
+| Yelum / Aliro | Gestão de Parcelas (aceita o termo LGPD) → "Atrasadas" (até ontem) + "A Vencer" (hoje até +15 dias) com vencimento original já passado → Exportar Excel | ✅ testada no portal real |
 | MAPFRE (MAPFRE Negócios) | código interno TODOS → Parcelas dos Clientes → "Vencida" (últimos 30 dias) + "A vencer" reprogramadas (hoje até +14 dias) → exportar CSV | ✅ testada no portal real |
 | Suhai (i4pro) | Relatórios → Impressão de 2ª Via → "Parcelas Pendentes Corretor" → Exportar Excel (XLSX) | ✅ testada no portal real |
 | Zurich (Espaço Parceiros) | Parcelas vencidas (últimos 30 dias) → Buscar → Exportar XLS (descarta as já pagas) | ✅ testada no portal real |
@@ -32,7 +32,11 @@ Particularidades dos portais (já tratadas pelo robô):
   interno TODOS. Das reprogramadas entram todas; VENCIMENTO = vencimento original e
   DATA LIMITE = vencimento reprogramado.
 - **Suhai**: o login precisa da página totalmente carregada (senão dá "Sessão inválida").
-- **Zurich**: o "XLS" exportado é na verdade uma tabela HTML; parcelas "Pago"/"Aprovado" são descartadas.
+- **Zurich**: o "XLS" exportado é na verdade uma tabela HTML; parcelas "Pago"/"Aprovado" são descartadas
+  ("Aprovado" conta como pago).
+
+Regras confirmadas com a equipe em 27/11/2026: MAPFRE mantém todas as reprogramadas; Yelum e MAPFRE
+seguem regras separadas; parcelas que vencem hoje entram (0 dias de atraso); períodos mantidos.
 
 Como o portal da Yelum traz as duas marcas, a coluna SEGURADORA sai como **YELUM** ou **ALIRO**
 conforme o produto. Formas de pagamento são padronizadas para CARTÃO / DÉBITO / PIX / BOLETO.
